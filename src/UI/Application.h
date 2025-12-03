@@ -28,6 +28,15 @@ private:
     // Mouse position tracking
     double mouseX_;
     double mouseY_;
+    
+    // 3D Camera controls
+    float cameraRotationX_;
+    float cameraRotationY_;
+    float cameraDistance_;
+    bool isDragging_;
+    double lastMouseX_;
+    double lastMouseY_;
+    bool use3DView_;
 };
 
 } // namespace CADCore
