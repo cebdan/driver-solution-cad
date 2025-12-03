@@ -1,10 +1,12 @@
 #include "Core/Kernel.h"
+#include "Core/RegisterSolutions.h"
 #include <stdexcept>
 
 namespace CADCore {
 
 Kernel::Kernel() {
-    // Solutions will be registered via SolutionFactory
+    // Register built-in solution types
+    registerBuiltinSolutions();
 }
 
 Kernel::~Kernel() = default;

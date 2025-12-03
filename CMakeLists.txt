@@ -23,10 +23,17 @@ add_library(CADCore STATIC
     src/Core/Kernel.cpp
     src/Core/Solution.cpp
     src/Core/SolutionFactory.cpp
+    src/Core/RegisterSolutions.cpp
+    src/Solutions/PointSolution.cpp
 )
 
 target_include_directories(CADCore PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# Solutions library (part of CADCore)
+target_include_directories(CADCore PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/Solutions
 )
 
 # Tests
@@ -58,6 +65,10 @@ if(BUILD_TESTS)
         add_executable(test_Kernel_Integration tests/test_Kernel_Integration.cpp)
         target_link_libraries(test_Kernel_Integration CADCore GTest::GTest GTest::Main)
         add_test(NAME KernelIntegrationTest COMMAND test_Kernel_Integration)
+        
+        add_executable(test_PointSolution tests/test_PointSolution.cpp)
+        target_link_libraries(test_PointSolution CADCore GTest::GTest GTest::Main)
+        add_test(NAME PointSolutionTest COMMAND test_PointSolution)
     else()
         message(WARNING "Google Test not found - tests will not be built")
         message(STATUS "Install with: brew install googletest (macOS) or apt-get install libgtest-dev (Linux)")
