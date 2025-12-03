@@ -27,6 +27,7 @@ add_library(CADCore STATIC
     src/Solutions/PointSolution.cpp
     src/Solutions/LineSolution.cpp
     src/Solutions/CoordinateSystemSolution.cpp
+    src/Solutions/CircleSolution.cpp
 )
 
 target_include_directories(CADCore PUBLIC
@@ -79,6 +80,10 @@ if(BUILD_TESTS)
         add_executable(test_CoordinateSystemSolution tests/test_CoordinateSystemSolution.cpp)
         target_link_libraries(test_CoordinateSystemSolution CADCore GTest::GTest GTest::Main)
         add_test(NAME CoordinateSystemSolutionTest COMMAND test_CoordinateSystemSolution)
+        
+        add_executable(test_CircleSolution tests/test_CircleSolution.cpp)
+        target_link_libraries(test_CircleSolution CADCore GTest::GTest GTest::Main)
+        add_test(NAME CircleSolutionTest COMMAND test_CircleSolution)
     else()
         message(WARNING "Google Test not found - tests will not be built")
         message(STATUS "Install with: brew install googletest (macOS) or apt-get install libgtest-dev (Linux)")
