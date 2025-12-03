@@ -7,7 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Build options
 option(BUILD_TESTS "Build unit tests" ON)
-option(BUILD_UI "Build UI components" OFF)
+option(BUILD_UI "Build UI components" ON)
 
 # Output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -117,6 +117,81 @@ if(BUILD_TESTS)
     else()
         message(WARNING "Google Test not found - tests will not be built")
         message(STATUS "Install with: brew install googletest (macOS) or apt-get install libgtest-dev (Linux)")
+    endif()
+endif()
+
+# UI Application
+if(BUILD_UI)
+    # Find GLFW
+    find_path(GLFW_INCLUDE_DIR GLFW/glfw3.h
+        PATHS
+        /usr/local/include
+        /usr/include
+        /opt/homebrew/include
+    )
+    find_library(GLFW_LIBRARY
+        NAMES glfw3 glfw
+        PATHS
+        /usr/local/lib
+        /usr/lib
+        /opt/homebrew/lib
+    )
+    
+    if(GLFW_INCLUDE_DIR AND GLFW_LIBRARY)
+        set(GLFW_FOUND TRUE)
+        message(STATUS "GLFW found: ${GLFW_LIBRARY}")
+    else()
+        message(WARNING "GLFW not found - UI will not be built")
+        message(STATUS "Install with: brew install glfw (macOS) or apt-get install libglfw3-dev (Linux)")
+    endif()
+    
+    if(GLFW_FOUND)
+        # Create UI library
+        add_library(CADUI STATIC
+            src/UI/Window.cpp
+            src/UI/Application.cpp
+        )
+        
+        target_include_directories(CADUI PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/UI
+            ${GLFW_INCLUDE_DIR}
+        )
+        
+        target_link_libraries(CADUI PUBLIC
+            CADCore
+            ${GLFW_LIBRARY}
+        )
+        
+        # OpenGL (usually comes with system)
+        find_package(OpenGL REQUIRED)
+        target_link_libraries(CADUI PUBLIC OpenGL::GL)
+        
+        # macOS specific frameworks
+        if(APPLE)
+            find_library(COCOA_FRAMEWORK Cocoa)
+            find_library(IOKIT_FRAMEWORK IOKit)
+            find_library(COREVIDEO_FRAMEWORK CoreVideo)
+            target_link_libraries(CADUI PUBLIC
+                ${COCOA_FRAMEWORK}
+                ${IOKIT_FRAMEWORK}
+                ${COREVIDEO_FRAMEWORK}
+            )
+        endif()
+        
+        # Main application executable
+        add_executable(${PROJECT_NAME}
+            src/main.cpp
+        )
+        
+        target_link_libraries(${PROJECT_NAME} PRIVATE
+            CADUI
+            CADCore
+        )
+        
+        message(STATUS "UI application will be built")
+    else()
+        message(WARNING "GLFW not found - UI application will not be built")
     endif()
 endif()
 
