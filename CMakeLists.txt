@@ -33,6 +33,7 @@ add_library(CADCore STATIC
     src/Solutions/ExtrudeSolution.cpp
     src/Solutions/RevolveSolution.cpp
     src/Solutions/FilletSolution.cpp
+    src/Solutions/BooleanSolution.cpp
 )
 
 target_include_directories(CADCore PUBLIC
@@ -109,6 +110,10 @@ if(BUILD_TESTS)
         add_executable(test_FilletSolution tests/test_FilletSolution.cpp)
         target_link_libraries(test_FilletSolution CADCore GTest::GTest GTest::Main)
         add_test(NAME FilletSolutionTest COMMAND test_FilletSolution)
+        
+        add_executable(test_BooleanSolution tests/test_BooleanSolution.cpp)
+        target_link_libraries(test_BooleanSolution CADCore GTest::GTest GTest::Main)
+        add_test(NAME BooleanSolutionTest COMMAND test_BooleanSolution)
     else()
         message(WARNING "Google Test not found - tests will not be built")
         message(STATUS "Install with: brew install googletest (macOS) or apt-get install libgtest-dev (Linux)")

@@ -9,6 +9,7 @@
 #include "Solutions/ExtrudeSolution.h"
 #include "Solutions/RevolveSolution.h"
 #include "Solutions/FilletSolution.h"
+#include "Solutions/BooleanSolution.h"
 #include <memory>
 
 namespace CADCore {
@@ -68,6 +69,12 @@ void registerBuiltinSolutions() {
     if (!factory.isRegistered("geometry.fillet")) {
         factory.registerSolution("geometry.fillet",
             [](SolutionID id) { return std::make_unique<FilletSolution>(id); });
+    }
+    
+    // Register Boolean Solution (only if not already registered)
+    if (!factory.isRegistered("geometry.boolean")) {
+        factory.registerSolution("geometry.boolean",
+            [](SolutionID id) { return std::make_unique<BooleanSolution>(id); });
     }
 }
 
