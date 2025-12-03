@@ -4,16 +4,16 @@
 namespace CADCore {
 
 Kernel::Kernel() {
-    // Will register builtin solutions later
+    // Solutions will be registered via SolutionFactory
 }
 
 Kernel::~Kernel() = default;
 
 SolutionID Kernel::createSolution(const std::string& type) {
-    // For now, just placeholder
-    // Will use SolutionFactory in 02_solution_structure.md
-    throw std::runtime_error("Solution creation not implemented yet. "
-                             "Will be implemented in 02_solution_structure.md");
+    SolutionID id = nextID_++;
+    auto solution = SolutionFactory::instance().create(type, id);
+    solutions_[id] = std::move(solution);
+    return id;
 }
 
 Solution* Kernel::getSolution(SolutionID id) {
@@ -53,26 +53,17 @@ void Kernel::setDriver(SolutionID id, const std::string& name, std::any value) {
         updateDependency(id, depID);
     }
     
-    // Will be implemented in Solution class
-    // solution->setDriver(name, value);
-    throw std::runtime_error("setDriver not implemented yet. "
-                             "Will be implemented in 02_solution_structure.md");
+    solution->setDriver(name, value);
 }
 
 std::any Kernel::getDriver(SolutionID id, const std::string& name) {
     Solution* solution = getSolution(id);
-    // Will be implemented in Solution class
-    // return solution->getDriver(name);
-    throw std::runtime_error("getDriver not implemented yet. "
-                             "Will be implemented in 02_solution_structure.md");
+    return solution->getDriver(name);
 }
 
 void Kernel::execute(SolutionID id) {
     Solution* solution = getSolution(id);
-    // Will be implemented in Solution class
-    // solution->execute();
-    throw std::runtime_error("execute not implemented yet. "
-                             "Will be implemented in 02_solution_structure.md");
+    solution->execute(this);
 }
 
 void Kernel::executeDependent(SolutionID id) {
@@ -87,10 +78,7 @@ void Kernel::executeDependent(SolutionID id) {
 
 std::any Kernel::getOutput(SolutionID id, const std::string& name) {
     Solution* solution = getSolution(id);
-    // Will be implemented in Solution class
-    // return solution->getOutput(name);
-    throw std::runtime_error("getOutput not implemented yet. "
-                             "Will be implemented in 02_solution_structure.md");
+    return solution->getOutput(name);
 }
 
 std::vector<SolutionID> Kernel::getDependents(SolutionID id) {

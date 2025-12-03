@@ -3,6 +3,7 @@
 #include "Types.h"
 #include "DependencyGraph.h"
 #include "Solution.h"
+#include "SolutionFactory.h"
 #include <map>
 #include <memory>
 #include <string>

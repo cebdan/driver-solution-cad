@@ -21,6 +21,8 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 add_library(CADCore STATIC
     src/Core/DependencyGraph.cpp
     src/Core/Kernel.cpp
+    src/Core/Solution.cpp
+    src/Core/SolutionFactory.cpp
 )
 
 target_include_directories(CADCore PUBLIC
@@ -44,6 +46,18 @@ if(BUILD_TESTS)
         add_executable(test_Kernel tests/test_Kernel.cpp)
         target_link_libraries(test_Kernel CADCore GTest::GTest GTest::Main)
         add_test(NAME KernelTest COMMAND test_Kernel)
+        
+        add_executable(test_Solution tests/test_Solution.cpp)
+        target_link_libraries(test_Solution CADCore GTest::GTest GTest::Main)
+        add_test(NAME SolutionTest COMMAND test_Solution)
+        
+        add_executable(test_SolutionFactory tests/test_SolutionFactory.cpp)
+        target_link_libraries(test_SolutionFactory CADCore GTest::GTest GTest::Main)
+        add_test(NAME SolutionFactoryTest COMMAND test_SolutionFactory)
+        
+        add_executable(test_Kernel_Integration tests/test_Kernel_Integration.cpp)
+        target_link_libraries(test_Kernel_Integration CADCore GTest::GTest GTest::Main)
+        add_test(NAME KernelIntegrationTest COMMAND test_Kernel_Integration)
     else()
         message(WARNING "Google Test not found - tests will not be built")
         message(STATUS "Install with: brew install googletest (macOS) or apt-get install libgtest-dev (Linux)")
