@@ -30,6 +30,7 @@ add_library(CADCore STATIC
     src/Solutions/CircleSolution.cpp
     src/Solutions/SketchSolution.cpp
     src/Solutions/ConstraintSolution.cpp
+    src/Solutions/ExtrudeSolution.cpp
 )
 
 target_include_directories(CADCore PUBLIC
@@ -94,6 +95,10 @@ if(BUILD_TESTS)
         add_executable(test_ConstraintSolution tests/test_ConstraintSolution.cpp)
         target_link_libraries(test_ConstraintSolution CADCore GTest::GTest GTest::Main)
         add_test(NAME ConstraintSolutionTest COMMAND test_ConstraintSolution)
+        
+        add_executable(test_ExtrudeSolution tests/test_ExtrudeSolution.cpp)
+        target_link_libraries(test_ExtrudeSolution CADCore GTest::GTest GTest::Main)
+        add_test(NAME ExtrudeSolutionTest COMMAND test_ExtrudeSolution)
     else()
         message(WARNING "Google Test not found - tests will not be built")
         message(STATUS "Install with: brew install googletest (macOS) or apt-get install libgtest-dev (Linux)")
