@@ -13,14 +13,13 @@ Window::Window(int width, int height, const std::string& title)
         throw std::runtime_error("Failed to initialize GLFW");
     }
     
-    // Configure GLFW
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    // Configure GLFW - use OpenGL 2.1 for compatibility with immediate mode
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
     
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
+    // Enable window resizing
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     
     // Create window
     window_ = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
@@ -64,7 +63,8 @@ void Window::framebufferSizeCallback(GLFWwindow* window, int width, int height) 
         win->width_ = width;
         win->height_ = height;
     }
-    glViewport(0, 0, width, height);
+    // Viewport will be set in render loop
+    // Note: This callback is called when window is resized
 }
 
 } // namespace CADCore

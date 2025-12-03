@@ -22,6 +22,9 @@ public:
     int getWidth() const { return width_; }
     int getHeight() const { return height_; }
     
+    // Allow Application to update size directly
+    friend class Application;
+    
 private:
     GLFWwindow* window_;
     int width_;

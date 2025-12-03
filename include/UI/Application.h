@@ -24,6 +24,10 @@ private:
     std::unique_ptr<Kernel> kernel_;
     bool showDemoWindow_;
     bool showKernelInfo_;
+    
+    // Mouse position tracking
+    double mouseX_;
+    double mouseY_;
 };
 
 } // namespace CADCore
