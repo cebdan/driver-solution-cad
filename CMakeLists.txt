@@ -17,17 +17,37 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# Source files (to be added as project grows)
-file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h")
-file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
+# Core library
+add_library(CADCore STATIC
+    src/Core/DependencyGraph.cpp
+    src/Core/Kernel.cpp
+)
 
-# Main executable (placeholder)
-# add_executable(${PROJECT_NAME} ${SOURCES})
+target_include_directories(CADCore PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
 # Tests
 if(BUILD_TESTS)
     enable_testing()
-    # Add Catch2 or other testing framework here
+    
+    # Find Google Test
+    find_package(GTest QUIET)
+    
+    if(GTest_FOUND)
+        message(STATUS "Google Test found - building tests")
+        
+        add_executable(test_DependencyGraph tests/test_DependencyGraph.cpp)
+        target_link_libraries(test_DependencyGraph CADCore GTest::GTest GTest::Main)
+        add_test(NAME DependencyGraphTest COMMAND test_DependencyGraph)
+        
+        add_executable(test_Kernel tests/test_Kernel.cpp)
+        target_link_libraries(test_Kernel CADCore GTest::GTest GTest::Main)
+        add_test(NAME KernelTest COMMAND test_Kernel)
+    else()
+        message(WARNING "Google Test not found - tests will not be built")
+        message(STATUS "Install with: brew install googletest (macOS) or apt-get install libgtest-dev (Linux)")
+    endif()
 endif()
 
 # Install rules (placeholder)

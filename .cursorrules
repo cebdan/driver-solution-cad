@@ -1,0 +1,90 @@
+# Driver-Solution CAD Rules
+
+## Platform
+- Primary development: macOS (Apple Silicon & Intel)
+- Target platforms: macOS, Windows, Linux, Haiku OS
+- Use cross-platform code (STL, CMake)
+- Avoid platform-specific code in Core
+
+## Architecture
+- Everything is a Solution
+- Data is Drivers
+- No references - only drivers
+- OpenCascade is optional tool (geometry + visualization)
+- UI separate from Core (future: Dear ImGui)
+
+## Code Style
+- C++17
+- STL containers
+- Smart pointers (unique_ptr, shared_ptr)
+- std::any for driver/output values
+- Clear error messages
+- Cross-platform (no macOS-only APIs in Core)
+
+## Naming
+- Classes: PascalCase (e.g., PointSolution)
+- Methods: camelCase (e.g., setDriver)
+- Variables: camelCase (e.g., solutionId)
+- Files: match class name (e.g., PointSolution.h)
+- Namespace: CADCore
+
+## Solution Rules
+1. All Solutions inherit from Solution base class
+2. Implement compute() method
+3. Declare required drivers and provided outputs
+4. Use setOutput() to store results
+5. Register in SolutionFactory
+
+## Driver Rules
+1. Driver = any input variable
+2. Can be: number, string, expression, or SolutionID
+3. Changing driver marks Solution dirty
+4. Dependencies tracked automatically
+
+## Platform Guidelines
+- Use CMake for build system
+- Detect platform in CMake, not in code
+- Use standard library (no macOS-only APIs)
+- File paths: std::filesystem (cross-platform)
+- UI (future): Dear ImGui (cross-platform)
+
+## Testing
+- Every Solution needs unit test
+- Test with Google Test
+- Mock solutions for testing
+- Test driver validation
+- Test dependency tracking
+- Run tests on macOS primary
+
+## Comments
+- Public methods need documentation
+- Explain WHY not WHAT
+- Document driver requirements
+- Document output format
+- Use Doxygen style comments
+
+## UI (Future Phase)
+- Dear ImGui for interface
+- GLFW for windowing
+- Metal on macOS, DirectX on Windows, Vulkan on Linux
+- Keep UI completely separate from Core
+- Core has zero UI dependencies
+
+## Error Handling
+- Use exceptions for errors
+- Clear error messages
+- Validate inputs
+- Check for null pointers
+- Handle OpenCascade failures gracefully
+
+## Git Commit Messages
+- Format: "Brief description\n\nDetailed explanation"
+- Start with verb (Add, Fix, Update, Remove)
+- Reference issue numbers if applicable
+- Keep first line under 50 characters
+
+## Documentation
+- Update README.md with new features
+- Update ARCHITECTURE.md for design changes
+- Add examples for new Solutions
+- Keep docs/ folder up to date
