@@ -7,6 +7,7 @@
 #include "Solutions/SketchSolution.h"
 #include "Solutions/ConstraintSolution.h"
 #include "Solutions/ExtrudeSolution.h"
+#include "Solutions/RevolveSolution.h"
 #include <memory>
 
 namespace CADCore {
@@ -54,6 +55,12 @@ void registerBuiltinSolutions() {
     if (!factory.isRegistered("geometry.extrude")) {
         factory.registerSolution("geometry.extrude",
             [](SolutionID id) { return std::make_unique<ExtrudeSolution>(id); });
+    }
+    
+    // Register Revolve Solution (only if not already registered)
+    if (!factory.isRegistered("geometry.revolve")) {
+        factory.registerSolution("geometry.revolve",
+            [](SolutionID id) { return std::make_unique<RevolveSolution>(id); });
     }
 }
 
