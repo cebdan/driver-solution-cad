@@ -1,4 +1,4 @@
-# Build d# Build directories
+# Build directories
 build/
 build-*/
 cmake-build-*/
@@ -54,4 +54,3 @@ compile_commands.json
 *.tar.gz
 *.zip
 *.dmg
-```
