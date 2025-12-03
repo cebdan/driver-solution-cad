@@ -2,6 +2,7 @@
 #include "Core/SolutionFactory.h"
 #include "Solutions/PointSolution.h"
 #include "Solutions/LineSolution.h"
+#include "Solutions/CoordinateSystemSolution.h"
 #include <memory>
 
 namespace CADCore {
@@ -19,6 +20,12 @@ void registerBuiltinSolutions() {
     if (!factory.isRegistered("geometry.line")) {
         factory.registerSolution("geometry.line",
             [](SolutionID id) { return std::make_unique<LineSolution>(id); });
+    }
+    
+    // Register Coordinate System Solution (only if not already registered)
+    if (!factory.isRegistered("geometry.coordinate_system")) {
+        factory.registerSolution("geometry.coordinate_system",
+            [](SolutionID id) { return std::make_unique<CoordinateSystemSolution>(id); });
     }
 }
 
