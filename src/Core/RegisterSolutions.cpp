@@ -5,6 +5,7 @@
 #include "Solutions/CoordinateSystemSolution.h"
 #include "Solutions/CircleSolution.h"
 #include "Solutions/SketchSolution.h"
+#include "Solutions/ConstraintSolution.h"
 #include <memory>
 
 namespace CADCore {
@@ -40,6 +41,12 @@ void registerBuiltinSolutions() {
     if (!factory.isRegistered("geometry.sketch")) {
         factory.registerSolution("geometry.sketch",
             [](SolutionID id) { return std::make_unique<SketchSolution>(id); });
+    }
+    
+    // Register Constraint Solution (only if not already registered)
+    if (!factory.isRegistered("geometry.constraint")) {
+        factory.registerSolution("geometry.constraint",
+            [](SolutionID id) { return std::make_unique<ConstraintSolution>(id); });
     }
 }
 
