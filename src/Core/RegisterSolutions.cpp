@@ -8,6 +8,7 @@
 #include "Solutions/ConstraintSolution.h"
 #include "Solutions/ExtrudeSolution.h"
 #include "Solutions/RevolveSolution.h"
+#include "Solutions/FilletSolution.h"
 #include <memory>
 
 namespace CADCore {
@@ -61,6 +62,12 @@ void registerBuiltinSolutions() {
     if (!factory.isRegistered("geometry.revolve")) {
         factory.registerSolution("geometry.revolve",
             [](SolutionID id) { return std::make_unique<RevolveSolution>(id); });
+    }
+    
+    // Register Fillet Solution (only if not already registered)
+    if (!factory.isRegistered("geometry.fillet")) {
+        factory.registerSolution("geometry.fillet",
+            [](SolutionID id) { return std::make_unique<FilletSolution>(id); });
     }
 }
 
