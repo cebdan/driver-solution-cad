@@ -19,27 +19,40 @@ Microkernel CAD system based on Driver-Solution architecture.
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| **macOS** | ✅ Primary | Apple Silicon & Intel |
-| Windows | 🔜 Planned | Cross-compilation ready |
-| Linux | 🔜 Planned | Ubuntu/Debian/Fedora |
+| **macOS** | ✅ Working | Apple Silicon & Intel, OpenGL 2.1 |
+| **Windows** | ✅ Supported | Visual Studio 2019+, vcpkg recommended |
+| **Linux** | ✅ Supported | Ubuntu/Debian/Fedora, GLFW required |
 | Haiku OS | 🔜 Planned | Community interest |
 
 ## 🚀 Quick Start
 
 ### Prerequisites (macOS)
 ```bash
-brew install cmake ninja opencascade googletest
+brew install cmake ninja glfw googletest
+```
+
+### Prerequisites (Windows)
+```powershell
+# Using vcpkg (recommended)
+git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+cd C:\vcpkg
+.\bootstrap-vcpkg.bat
+.\vcpkg install glfw3:x64-windows
 ```
 
 ### Build
 ```bash
-git clone https://github.com/YOURUSERNAME/driver-solution-cad.git
+git clone https://github.com/cebdan/driver-solution-cad.git
 cd driver-solution-cad
 mkdir build && cd build
 cmake -G Ninja ..
 ninja
-ctest
+
+# Run UI application
+./bin/driver-solution-cad
 ```
+
+**See [BUILD.md](BUILD.md) for detailed instructions for all platforms.**
 
 ### Example
 ```cpp
@@ -88,28 +101,63 @@ driver-solution-cad/
 
 ## 🛠️ Implementation Progress
 
-### Phase 1: Core (Current)
-- [ ] Minimal Kernel
-- [ ] Solution base class
-- [ ] Driver system
-- [ ] Dependency graph
-- [ ] Point Solution
-- [ ] Line Solution
-- [ ] Coordinate System Solution
+### Phase 0: Setup ✅
+- [x] GitHub repository
+- [x] CMake build system
+- [x] Cross-platform support
 
-### Phase 2: UI (Future)
-- [ ] GLFW windowing
-- [ ] OpenCascade 3D visualization
-- [ ] Dear ImGui 2D UI
-- [ ] Parameter panel
-- [ ] Solution tree view
+### Phase 1: Core Kernel ✅
+- [x] Minimal Kernel
+- [x] Solution base class
+- [x] Driver system
+- [x] Dependency graph
+- [x] SolutionFactory
+- [x] Point Solution
+- [x] Line Solution
+- [x] Coordinate System Solution
+- [x] Circle Solution
+- [x] Sketch Solution
+- [x] Constraint Solution
 
-### Phase 3: Advanced (Future)
+### Phase 2: Basic Geometry ✅
+- [x] Extrude Solution
+- [x] Revolve Solution
+- [x] Fillet Solution
+- [x] Boolean Operations (Union, Cut, Intersection)
+
+### Phase 3: Sketches ✅
+- [x] Sketch Solution
+- [x] Constraint Solution
+- [x] Geometric constraints
+
+### Phase 4: 3D Operations ✅
+- [x] Extrude
+- [x] Revolve
+- [x] Boolean operations
+- [x] Fillet
+
+### Phase 5: Modifications ✅
+- [x] Fillet Solution
+- [x] Boolean operations
+
+### Phase 6: UI (Current) ✅
+- [x] GLFW windowing
+- [x] OpenGL 2.1 rendering
+- [x] 3D viewport with camera controls
+- [x] View navigator (projection cube)
+- [x] Performance optimizations for 10000+ bodies:
+  - [x] RenderCache with VBO support
+  - [x] Frustum culling
+  - [x] LOD (Level of Detail)
+  - [x] Octree spatial indexing
+  - [x] Batch rendering
+
+### Phase 7: Advanced (Future)
 - [ ] Expression drivers
-- [ ] Sketch constraints
-- [ ] Extrude/Revolve operations
-- [ ] Boolean operations
+- [ ] Advanced constraints
 - [ ] Export (STEP/IGES/STL)
+- [ ] Import (STEP/IGES)
+- [ ] Assembly support
 
 ## 🤖 For Cursor AI
 
@@ -123,13 +171,19 @@ Start with:
 
 All implementation details and best practices are in `docs/instructions/`.
 
-## 🎨 Future UI
+## 🎨 Current UI
 
-**Dear ImGui** + **OpenCascade Visualization**
+**GLFW** + **OpenGL 2.1** (Minimal UI)
 
-- **3D Viewport**: OpenCascade (professional CAD rendering)
-- **2D UI**: ImGui (lightweight, cross-platform)
-- **Window**: GLFW (simple, cross-platform)
+- **3D Viewport**: OpenGL 2.1 with camera controls
+- **View Navigator**: Interactive cube for quick view switching
+- **Performance**: Optimized for 10000+ bodies
+  - Frustum culling
+  - LOD (Level of Detail)
+  - Spatial indexing (Octree)
+  - Batch rendering
+
+**Future**: Dear ImGui for 2D UI panels (parameter editing, solution tree)
 
 See [UI_FRAMEWORK.md](UI_FRAMEWORK.md) for detailed analysis.
 
@@ -184,10 +238,32 @@ MIT License - see [LICENSE](LICENSE)
 
 ## 📧 Contact
 
-Issues and discussions on GitHub.
+Issues and discussions on GitHub: https://github.com/cebdan/driver-solution-cad
 
 ---
 
-**Status**: 🚧 Early development - Core architecture design phase
+## 🎮 Controls
 
-**Next milestone**: Minimal kernel implementation with Point/Line Solutions
+### 3D Viewport
+- **Left Mouse + Drag**: Rotate camera
+- **Mouse Wheel**: Zoom in/out
+- **Click Navigator Cube** (top-right): Switch to standard views
+  - Front, Left, Right, Top, Bottom views
+- **ESC**: Close window
+
+### Performance Features
+- **Frustum Culling**: Automatically skips objects outside view
+- **LOD**: Reduces detail for distant objects
+- **Statistics**: Displayed in window title (rendered objects count)
+
+---
+
+**Status**: ✅ Core + UI working - Ready for cross-platform development
+
+**Current Features**:
+- ✅ Complete kernel with all basic Solutions
+- ✅ 3D visualization with OpenGL
+- ✅ Performance optimizations for large assemblies (10000+ bodies)
+- ✅ Cross-platform (macOS, Windows, Linux)
+
+**Next milestone**: Advanced features (expressions, assemblies, export/import)
