@@ -18,6 +18,7 @@ public:
 private:
     void initializeUI();
     void renderUI();
+    void renderSolutions();
     void shutdownUI();
     
     std::unique_ptr<Window> window_;
@@ -37,6 +38,11 @@ private:
     double lastMouseX_;
     double lastMouseY_;
     bool use3DView_;
+    
+    // View navigator
+    void renderViewNavigator(int width, int height);
+    void handleNavigatorClick(double mouseX, double mouseY, int width, int height);
+    bool isNavigatorClick(double mouseX, double mouseY, int width, int height);
 };
 
 } // namespace CADCore

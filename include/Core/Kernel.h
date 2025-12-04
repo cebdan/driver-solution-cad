@@ -43,6 +43,10 @@ public:
     std::vector<SolutionID> getDependents(SolutionID id);
     std::vector<SolutionID> getDependencies(SolutionID id);
     
+    // Iteration (for rendering and performance)
+    std::vector<SolutionID> getAllSolutionIDs() const;
+    std::vector<SolutionID> getSolutionIDsByType(const std::string& type) const;
+    
     // Internal (called by Solutions when drivers change)
     void updateDependency(SolutionID from, SolutionID to);
 };

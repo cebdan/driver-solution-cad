@@ -150,6 +150,8 @@ if(BUILD_UI)
         add_library(CADUI STATIC
             src/UI/Window.cpp
             src/UI/Application.cpp
+            src/UI/RenderCache.cpp
+            src/UI/Octree.cpp
         )
         
         target_include_directories(CADUI PUBLIC

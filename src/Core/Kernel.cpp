@@ -95,5 +95,24 @@ void Kernel::updateDependency(SolutionID from, SolutionID to) {
     dependencies_.addDependency(from, to);
 }
 
+std::vector<SolutionID> Kernel::getAllSolutionIDs() const {
+    std::vector<SolutionID> ids;
+    ids.reserve(solutions_.size());
+    for (const auto& pair : solutions_) {
+        ids.push_back(pair.first);
+    }
+    return ids;
+}
+
+std::vector<SolutionID> Kernel::getSolutionIDsByType(const std::string& type) const {
+    std::vector<SolutionID> ids;
+    for (const auto& pair : solutions_) {
+        if (pair.second->getType() == type) {
+            ids.push_back(pair.first);
+        }
+    }
+    return ids;
+}
+
 } // namespace CADCore
 
