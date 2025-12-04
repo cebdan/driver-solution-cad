@@ -5,13 +5,19 @@
 
 namespace CADCore {
 
+bool Window::initializeGLFW() {
+    if (glfwInit() == GLFW_FALSE) {
+        return false;
+    }
+    return true;
+}
+
+void Window::terminateGLFW() {
+    glfwTerminate();
+}
+
 Window::Window(int width, int height, const std::string& title)
     : window_(nullptr), width_(width), height_(height) {
-    
-    // Initialize GLFW
-    if (!glfwInit()) {
-        throw std::runtime_error("Failed to initialize GLFW");
-    }
     
     // Configure GLFW - use OpenGL 2.1 for compatibility with immediate mode
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
@@ -21,18 +27,13 @@ Window::Window(int width, int height, const std::string& title)
     // Enable window resizing
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     
-    // Create window
+    // Create window (GLFW must be initialized by Application first)
     window_ = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
     if (!window_) {
-        glfwTerminate();
         throw std::runtime_error("Failed to create GLFW window");
     }
     
     glfwMakeContextCurrent(window_);
-    glfwSetWindowUserPointer(window_, this);
-    
-    // Set framebuffer size callback
-    glfwSetFramebufferSizeCallback(window_, framebufferSizeCallback);
     
     // Enable VSync
     glfwSwapInterval(1);
@@ -42,7 +43,7 @@ Window::~Window() {
     if (window_) {
         glfwDestroyWindow(window_);
     }
-    glfwTerminate();
+    // Note: glfwTerminate() is called by Application, not here
 }
 
 bool Window::shouldClose() const {
@@ -57,14 +58,9 @@ void Window::pollEvents() {
     glfwPollEvents();
 }
 
-void Window::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
-    Window* win = static_cast<Window*>(glfwGetWindowUserPointer(window));
-    if (win) {
-        win->width_ = width;
-        win->height_ = height;
-    }
-    // Viewport will be set in render loop
-    // Note: This callback is called when window is resized
+void Window::framebufferSizeCallback(GLFWwindow* /*window*/, int /*width*/, int /*height*/) {
+    // Unused now: Application queries framebuffer size directly each frame.
+    // Kept only to preserve ABI; no state is updated here.
 }
 
 } // namespace CADCore

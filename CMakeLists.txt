@@ -123,28 +123,49 @@ endif()
 # UI Application
 if(BUILD_UI)
     # Find GLFW
-    find_path(GLFW_INCLUDE_DIR GLFW/glfw3.h
-        PATHS
-        /usr/local/include
-        /usr/include
-        /opt/homebrew/include
-    )
-    find_library(GLFW_LIBRARY
-        NAMES glfw3 glfw
-        PATHS
-        /usr/local/lib
-        /usr/lib
-        /opt/homebrew/lib
-    )
-    
-    if(GLFW_INCLUDE_DIR AND GLFW_LIBRARY)
-        set(GLFW_FOUND TRUE)
-        message(STATUS "GLFW found: ${GLFW_LIBRARY}")
-    else()
-        message(WARNING "GLFW not found - UI will not be built")
-        message(STATUS "Install with: brew install glfw (macOS) or apt-get install libglfw3-dev (Linux)")
+    #
+    # macOS / Linux: search in standard locations (brew / system)
+    if(APPLE OR UNIX)
+        find_path(GLFW_INCLUDE_DIR GLFW/glfw3.h
+            PATHS
+            /usr/local/include
+            /usr/include
+            /opt/homebrew/include
+        )
+        find_library(GLFW_LIBRARY
+            NAMES glfw3 glfw
+            PATHS
+            /usr/local/lib
+            /usr/lib
+            /opt/homebrew/lib
+        )
+        if(GLFW_INCLUDE_DIR AND GLFW_LIBRARY)
+            set(GLFW_FOUND TRUE)
+            message(STATUS "GLFW found (Unix): ${GLFW_LIBRARY}")
+        endif()
     endif()
-    
+
+    # Windows: prefer Config package (vcpkg)
+    if(WIN32 AND NOT GLFW_FOUND)
+        find_package(glfw3 CONFIG QUIET)
+        if(glfw3_FOUND)
+            set(GLFW_FOUND TRUE)
+            set(GLFW_TARGET glfw)
+            message(STATUS "GLFW found via find_package(glfw3 CONFIG)")
+        endif()
+    endif()
+
+    # Fallback: use manually specified include/library variables (any platform)
+    if(NOT GLFW_FOUND AND GLFW_INCLUDE_DIR AND GLFW_LIBRARY)
+        set(GLFW_FOUND TRUE)
+        message(STATUS "GLFW found via explicit GLFW_INCLUDE_DIR / GLFW_LIBRARY")
+    endif()
+
+    if(NOT GLFW_FOUND)
+        message(WARNING "GLFW not found - UI will not be built")
+        message(STATUS "On macOS: brew install glfw; On Linux: install libglfw3-dev; On Windows (vcpkg): vcpkg install glfw3:x64-windows")
+    endif()
+
     if(GLFW_FOUND)
         # Create UI library
         add_library(CADUI STATIC
@@ -160,10 +181,18 @@ if(BUILD_UI)
             ${GLFW_INCLUDE_DIR}
         )
         
-        target_link_libraries(CADUI PUBLIC
-            CADCore
-            ${GLFW_LIBRARY}
-        )
+        # Link against GLFW
+        if(DEFINED GLFW_TARGET)
+            target_link_libraries(CADUI PUBLIC
+                CADCore
+                ${GLFW_TARGET}
+            )
+        else()
+            target_link_libraries(CADUI PUBLIC
+                CADCore
+                ${GLFW_LIBRARY}
+            )
+        endif()
         
         # OpenGL (usually comes with system)
         find_package(OpenGL REQUIRED)

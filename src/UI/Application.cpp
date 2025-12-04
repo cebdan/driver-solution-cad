@@ -13,6 +13,8 @@
 #include <iomanip>
 #include <string>
 #include <cmath>
+#include <thread>
+#include <chrono>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -24,61 +26,478 @@ namespace CADCore {
 BoundingBox computeBoundingBox(Solution* solution, Kernel* kernel);
 
 Application::Application()
-    : showDemoWindow_(false), showKernelInfo_(true), 
-      mouseX_(0.0), mouseY_(0.0),
+    : activeTool_(ToolType::Select),
+      activeLayerId_(1),
       cameraRotationX_(30.0f), cameraRotationY_(45.0f), cameraDistance_(5.0f),
-      isDragging_(false), lastMouseX_(0.0), lastMouseY_(0.0), use3DView_(true),
+      isDragging_(false), isPanning_(false),
+      lastMouseX_(0.0), lastMouseY_(0.0), use3DView_(true),
+      cameraOffsetX_(0.0f), cameraOffsetY_(0.0f),
+      activeRightTab_(RightPanelTab::Tree),
       renderedPoints_(0), renderedLines_(0), renderedSolids_(0) {
     
-    // Create window
-    window_ = std::make_unique<Window>(1280, 720, "Driver-Solution CAD");
+    // Initialize GLFW once for all windows
+    if (!Window::initializeGLFW()) {
+        throw std::runtime_error("Failed to initialize GLFW");
+    }
     
     // Create kernel
     kernel_ = std::make_unique<Kernel>();
     
-    // Create render cache with optimizations enabled
+    // Create render cache
     renderCache_ = std::make_unique<RenderCache>();
     renderCache_->setUseVBO(true);
     renderCache_->setUseFrustumCulling(true);
     renderCache_->setUseLOD(true);
     
-    // Create spatial index (Octree) with large bounds for 10000 bodies
+    // Create spatial index
     BoundingBox worldBounds;
     worldBounds.min = Point3D(-1000.0, -1000.0, -1000.0);
     worldBounds.max = Point3D(1000.0, 1000.0, 1000.0);
-    spatialIndex_ = std::make_unique<Octree>(worldBounds, 20, 10);  // 20 solutions per node, max depth 10
+    spatialIndex_ = std::make_unique<Octree>(worldBounds, 20, 10);
     
-    // Initialize OpenGL
-    initializeUI();
+    // Initialize UI state
+    initializeLayers();
+    initializeToolGroups();
+    
+    // Create 4 independent windows
+    initializeWindows();
+    setupCallbacks();
+    
+    // Create a test point
+    try {
+        SolutionID point = kernel_->createSolution("geometry.point");
+        kernel_->setDriver(point, "x", 10.0);
+        kernel_->setDriver(point, "y", 20.0);
+        kernel_->setDriver(point, "z", 0.0);
+        kernel_->execute(point);
+    } catch (const std::exception& e) {
+        // Silent error handling
+    }
 }
 
 Application::~Application() {
-    shutdownUI();
+    // Windows will be destroyed automatically
+    // Terminate GLFW after all windows are destroyed
+    Window::terminateGLFW();
 }
 
-void Application::initializeUI() {
-    // Basic OpenGL setup
-    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-    glEnable(GL_DEPTH_TEST);
+void Application::initializeWindows() {
+    // Window 1: Top Bar (horizontal, narrow)
+    windowTopBar_ = std::make_unique<Window>(1920, 100, "Top Bar");
+    
+    // Window 2: Left Tools (vertical, narrow)
+    windowLeftTools_ = std::make_unique<Window>(80, 800, "Left Tools");
+    
+    // Window 3: Main View (large, main 3D/2D view)
+    windowMainView_ = std::make_unique<Window>(1280, 720, "Main View");
+    
+    // Window 4: Right Panel (vertical, with tabs)
+    windowRightPanel_ = std::make_unique<Window>(300, 800, "Right Panel");
 }
 
-void Application::renderUI() {
-    // Get ACTUAL framebuffer size from GLFW (more accurate than stored values)
+void Application::initializeLayers() {
+    // Create default layers
+    layers_.clear();
+    for (int i = 1; i <= 10; ++i) {
+        Layer layer;
+        layer.id = i;
+        layer.name = "Layer " + std::to_string(i);
+        layer.visible = true;
+        layer.active = (i == 1);
+        layer.color = (i % 3);  // 0, 1, 2 for different colors
+        layers_.push_back(layer);
+    }
+    activeLayerId_ = 1;
+}
+
+void Application::initializeToolGroups() {
+    // Define tool groups: each tool can have sub-tools shown in TopBar row 2
+    toolGroups_.clear();
+    
+    ToolGroup selectGroup;
+    selectGroup.tool = ToolType::Select;
+    selectGroup.subTools = {"Select", "Box Select", "Lasso"};
+    toolGroups_.push_back(selectGroup);
+    
+    ToolGroup pointGroup;
+    pointGroup.tool = ToolType::Point;
+    pointGroup.subTools = {"Point", "Point on Curve", "Midpoint"};
+    toolGroups_.push_back(pointGroup);
+    
+    ToolGroup lineGroup;
+    lineGroup.tool = ToolType::Line;
+    lineGroup.subTools = {"Line", "Polyline", "Spline"};
+    toolGroups_.push_back(lineGroup);
+    
+    ToolGroup circleGroup;
+    circleGroup.tool = ToolType::Circle;
+    circleGroup.subTools = {"Circle", "Arc", "Ellipse"};
+    toolGroups_.push_back(circleGroup);
+    
+    ToolGroup extrudeGroup;
+    extrudeGroup.tool = ToolType::Extrude;
+    extrudeGroup.subTools = {"Extrude", "Extrude Along Path", "Sweep"};
+    toolGroups_.push_back(extrudeGroup);
+    
+    ToolGroup revolveGroup;
+    revolveGroup.tool = ToolType::Revolve;
+    revolveGroup.subTools = {"Revolve", "Revolve 360", "Revolve Partial"};
+    toolGroups_.push_back(revolveGroup);
+    
+    ToolGroup booleanGroup;
+    booleanGroup.tool = ToolType::Boolean;
+    booleanGroup.subTools = {"Union", "Cut", "Intersection"};
+    toolGroups_.push_back(booleanGroup);
+}
+
+void Application::setupCallbacks() {
+    // Setup callbacks for each window
+    // TopBar callbacks
+    glfwSetMouseButtonCallback(windowTopBar_->getHandle(), [](GLFWwindow* window, int button, int action, int mods) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+            double x, y;
+            glfwGetCursorPos(window, &x, &y);
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            app->handleTopBarClick(x, y, width, height);
+        }
+    });
+    glfwSetWindowUserPointer(windowTopBar_->getHandle(), this);
+    
+    // LeftTools callbacks
+    glfwSetMouseButtonCallback(windowLeftTools_->getHandle(), [](GLFWwindow* window, int button, int action, int mods) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+            double x, y;
+            glfwGetCursorPos(window, &x, &y);
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            app->handleLeftToolsClick(x, y, width, height);
+        }
+    });
+    glfwSetWindowUserPointer(windowLeftTools_->getHandle(), this);
+    
+    // MainView callbacks (camera controls)
+    glfwSetCursorPosCallback(windowMainView_->getHandle(), [](GLFWwindow* window, double xpos, double ypos) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->handleMainViewMouse(xpos, ypos, -1, 0);
+        }
+    });
+    glfwSetMouseButtonCallback(windowMainView_->getHandle(), [](GLFWwindow* window, int button, int action, int mods) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            double x, y;
+            glfwGetCursorPos(window, &x, &y);
+            app->handleMainViewMouse(x, y, button, action);
+        }
+    });
+    glfwSetScrollCallback(windowMainView_->getHandle(), [](GLFWwindow* window, double xoffset, double yoffset) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->cameraDistance_ += yoffset * 0.5f;
+            if (app->cameraDistance_ < 1.0f) app->cameraDistance_ = 1.0f;
+            if (app->cameraDistance_ > 20.0f) app->cameraDistance_ = 20.0f;
+        }
+    });
+    glfwSetKeyCallback(windowMainView_->getHandle(), [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        }
+    });
+    glfwSetWindowUserPointer(windowMainView_->getHandle(), this);
+    
+    // RightPanel callbacks
+    glfwSetMouseButtonCallback(windowRightPanel_->getHandle(), [](GLFWwindow* window, int button, int action, int mods) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+            double x, y;
+            glfwGetCursorPos(window, &x, &y);
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            app->handleRightPanelClick(x, y, width, height);
+        }
+    });
+    glfwSetWindowUserPointer(windowRightPanel_->getHandle(), this);
+}
+
+void Application::run() {
+    // Main loop: handle all 4 windows
+    while (true) {
+        // Check if all windows are closed
+        bool allClosed = true;
+        if (windowTopBar_ && !windowTopBar_->shouldClose()) allClosed = false;
+        if (windowLeftTools_ && !windowLeftTools_->shouldClose()) allClosed = false;
+        if (windowMainView_ && !windowMainView_->shouldClose()) allClosed = false;
+        if (windowRightPanel_ && !windowRightPanel_->shouldClose()) allClosed = false;
+        
+        if (allClosed) break;
+        
+        // Poll events for all windows
+        glfwPollEvents();
+        
+        // Render each window if it's not closed and not minimized
+        if (windowTopBar_ && !windowTopBar_->shouldClose()) {
+            int fbWidth, fbHeight;
+            glfwGetFramebufferSize(windowTopBar_->getHandle(), &fbWidth, &fbHeight);
+            if (fbWidth > 0 && fbHeight > 0 && 
+                glfwGetWindowAttrib(windowTopBar_->getHandle(), GLFW_ICONIFIED) != GLFW_TRUE) {
+                glfwMakeContextCurrent(windowTopBar_->getHandle());
+                renderTopBar(windowTopBar_.get());
+                windowTopBar_->swapBuffers();
+            }
+        }
+        
+        if (windowLeftTools_ && !windowLeftTools_->shouldClose()) {
+            int fbWidth, fbHeight;
+            glfwGetFramebufferSize(windowLeftTools_->getHandle(), &fbWidth, &fbHeight);
+            if (fbWidth > 0 && fbHeight > 0 && 
+                glfwGetWindowAttrib(windowLeftTools_->getHandle(), GLFW_ICONIFIED) != GLFW_TRUE) {
+                glfwMakeContextCurrent(windowLeftTools_->getHandle());
+                renderLeftTools(windowLeftTools_.get());
+                windowLeftTools_->swapBuffers();
+            }
+        }
+        
+        if (windowMainView_ && !windowMainView_->shouldClose()) {
+            int fbWidth, fbHeight;
+            glfwGetFramebufferSize(windowMainView_->getHandle(), &fbWidth, &fbHeight);
+            if (fbWidth > 0 && fbHeight > 0 && 
+                glfwGetWindowAttrib(windowMainView_->getHandle(), GLFW_ICONIFIED) != GLFW_TRUE) {
+                glfwMakeContextCurrent(windowMainView_->getHandle());
+                renderMainView(windowMainView_.get());
+                windowMainView_->swapBuffers();
+            }
+        }
+        
+        if (windowRightPanel_ && !windowRightPanel_->shouldClose()) {
+            int fbWidth, fbHeight;
+            glfwGetFramebufferSize(windowRightPanel_->getHandle(), &fbWidth, &fbHeight);
+            if (fbWidth > 0 && fbHeight > 0 && 
+                glfwGetWindowAttrib(windowRightPanel_->getHandle(), GLFW_ICONIFIED) != GLFW_TRUE) {
+                glfwMakeContextCurrent(windowRightPanel_->getHandle());
+                renderRightPanel(windowRightPanel_.get());
+                windowRightPanel_->swapBuffers();
+            }
+        }
+        
+        // Small sleep to prevent 100% CPU usage
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));  // ~60 FPS
+    }
+}
+
+// Rendering methods for each window (to be continued in next part)
+void Application::renderTopBar(Window* window) {
     int width, height;
-    glfwGetFramebufferSize(window_->getHandle(), &width, &height);
+    glfwGetFramebufferSize(window->getHandle(), &width, &height);
     
-    // Update stored window size
-    window_->width_ = width;
-    window_->height_ = height;
-    
-    // Set viewport to cover ENTIRE framebuffer
     glViewport(0, 0, width, height);
+    glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
     
-    // Clear screen with depth
+    // Setup 2D orthographic projection
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, width, 0, height, -1.0f, 1.0f);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    
+    glDisable(GL_DEPTH_TEST);
+    
+    const float row1Height = 30.0f;
+    const float row2Height = 30.0f;
+    const float row3Height = row1Height * 0.5f;
+    
+    float topY = static_cast<float>(height);
+    
+    // Row 1: Standard menu
+    float row1Bottom = topY - row1Height;
+    glColor4f(0.16f, 0.16f, 0.16f, 0.98f);
+    glBegin(GL_QUADS);
+    glVertex2f(0.0f, row1Bottom);
+    glVertex2f(static_cast<float>(width), row1Bottom);
+    glVertex2f(static_cast<float>(width), topY);
+    glVertex2f(0.0f, topY);
+    glEnd();
+    
+    // Menu items (File, Edit, etc.)
+    glColor3f(0.65f, 0.65f, 0.65f);
+    const float itemWidth = 70.0f;
+    const float itemMargin = 8.0f;
+    for (int i = 0; i < 5; ++i) {
+        float x0 = itemMargin + i * (itemWidth + itemMargin);
+        float x1 = x0 + itemWidth;
+        glBegin(GL_LINE_LOOP);
+        glVertex2f(x0, row1Bottom + 6.0f);
+        glVertex2f(x1, row1Bottom + 6.0f);
+        glVertex2f(x1, topY - 6.0f);
+        glVertex2f(x0, topY - 6.0f);
+        glEnd();
+    }
+    
+    // Row 2: Context row (linked to active tool from LeftTools)
+    float row2Top = row1Bottom;
+    float row2Bottom = row2Top - row2Height;
+    
+    glColor4f(0.13f, 0.13f, 0.13f, 0.98f);
+    glBegin(GL_QUADS);
+    glVertex2f(0.0f, row2Bottom);
+    glVertex2f(static_cast<float>(width), row2Bottom);
+    glVertex2f(static_cast<float>(width), row2Top);
+    glVertex2f(0.0f, row2Top);
+    glEnd();
+    
+    // Show sub-tools for active tool
+    for (const auto& group : toolGroups_) {
+        if (group.tool == activeTool_) {
+            float subToolWidth = static_cast<float>(width) / static_cast<float>(group.subTools.size());
+            for (size_t i = 0; i < group.subTools.size(); ++i) {
+                float x0 = subToolWidth * static_cast<float>(i);
+                float x1 = x0 + subToolWidth;
+                glColor3f(0.3f, 0.5f, 0.8f);
+                glBegin(GL_LINE_LOOP);
+                glVertex2f(x0 + 4.0f, row2Bottom + 4.0f);
+                glVertex2f(x1 - 4.0f, row2Bottom + 4.0f);
+                glVertex2f(x1 - 4.0f, row2Top - 4.0f);
+                glVertex2f(x0 + 4.0f, row2Top - 4.0f);
+                glEnd();
+            }
+            break;
+        }
+    }
+    
+    // Row 3: Layers (circular buttons with numbers)
+    float row3Top = row2Bottom;
+    float row3Bottom = row3Top - row3Height;
+    
+    glColor4f(0.12f, 0.12f, 0.12f, 0.98f);
+    glBegin(GL_QUADS);
+    glVertex2f(0.0f, row3Bottom);
+    glVertex2f(static_cast<float>(width), row3Bottom);
+    glVertex2f(static_cast<float>(width), row3Top);
+    glVertex2f(0.0f, row3Top);
+    glEnd();
+    
+    // Draw circular layer buttons
+    float layerRadius = row3Height * 0.3f;
+    float layerSpacing = layerRadius * 2.5f;
+    float startX = 20.0f;
+    float centerY = (row3Top + row3Bottom) * 0.5f;
+    
+    for (const auto& layer : layers_) {
+        float centerX = startX + static_cast<float>(layer.id - 1) * layerSpacing;
+        
+        // Different background color based on layer state
+        if (layer.active) {
+            glColor3f(0.4f, 0.6f, 0.9f);  // Active: blue
+        } else if (!layer.visible) {
+            glColor3f(0.3f, 0.3f, 0.3f);  // Hidden: dark gray
+        } else {
+            // Visible but not active: color based on layer.color
+            if (layer.color == 0) glColor3f(0.5f, 0.5f, 0.5f);
+            else if (layer.color == 1) glColor3f(0.6f, 0.5f, 0.5f);
+            else glColor3f(0.5f, 0.6f, 0.5f);
+        }
+        
+        // Draw circle
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex2f(centerX, centerY);
+        for (int i = 0; i <= 32; ++i) {
+            float angle = 2.0f * M_PI * i / 32.0f;
+            glVertex2f(centerX + layerRadius * cosf(angle), centerY + layerRadius * sinf(angle));
+        }
+        glEnd();
+        
+        // Draw number (simplified as small square)
+        glColor3f(1.0f, 1.0f, 1.0f);
+        float numSize = layerRadius * 0.5f;
+        glBegin(GL_QUADS);
+        glVertex2f(centerX - numSize, centerY - numSize);
+        glVertex2f(centerX + numSize, centerY - numSize);
+        glVertex2f(centerX + numSize, centerY + numSize);
+        glVertex2f(centerX - numSize, centerY + numSize);
+        glEnd();
+    }
+    
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+}
+
+void Application::renderLeftTools(Window* window) {
+    int width, height;
+    glfwGetFramebufferSize(window->getHandle(), &width, &height);
+    
+    glViewport(0, 0, width, height);
+    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, width, 0, height, -1.0f, 1.0f);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    
+    glDisable(GL_DEPTH_TEST);
+    
+    const float toolHeight = 60.0f;
+    const float toolMargin = 8.0f;
+    const float panelWidth = static_cast<float>(width);
+    
+    for (int i = 0; i < static_cast<int>(ToolType::Count); ++i) {
+        float y0 = static_cast<float>(height) - (toolMargin + (toolHeight + toolMargin) * (i + 1));
+        float y1 = y0 + toolHeight;
+        if (y1 < 0.0f) break;
+        
+        bool isActive = (static_cast<int>(activeTool_) == i);
+        
+        if (isActive) {
+            glColor3f(0.30f, 0.55f, 0.90f);
+        } else {
+            glColor3f(0.25f, 0.25f, 0.25f);
+        }
+        
+        glBegin(GL_QUADS);
+        glVertex2f(10.0f, y0);
+        glVertex2f(panelWidth - 10.0f, y0);
+        glVertex2f(panelWidth - 10.0f, y1);
+        glVertex2f(10.0f, y1);
+        glEnd();
+        
+        // Simple icon as inner rectangle
+        glColor3f(0.8f, 0.8f, 0.8f);
+        glBegin(GL_LINE_LOOP);
+        glVertex2f(18.0f, y0 + 8.0f);
+        glVertex2f(panelWidth - 18.0f, y0 + 8.0f);
+        glVertex2f(panelWidth - 18.0f, y1 - 8.0f);
+        glVertex2f(18.0f, y1 - 8.0f);
+        glEnd();
+    }
+    
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+}
+
+void Application::renderMainView(Window* window) {
+    int width, height;
+    glfwGetFramebufferSize(window->getHandle(), &width, &height);
+    
+    if (width <= 0 || height <= 0) return;
+    
+    glViewport(0, 0, width, height);
     glClearColor(0.15f, 0.15f, 0.2f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    // Enable depth testing for 3D
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     
@@ -91,7 +510,6 @@ void Application::renderUI() {
     float nearPlane = 0.1f;
     float farPlane = 100.0f;
     
-    // Calculate perspective projection
     float f = 1.0f / tan(fov * 0.5f * M_PI / 180.0f);
     float range = farPlane - nearPlane;
     
@@ -106,24 +524,23 @@ void Application::renderUI() {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     
-    // Camera positioning - rotate around origin
-    glTranslatef(0.0f, 0.0f, -cameraDistance_);
+    // Camera positioning
+    glTranslatef(cameraOffsetX_, cameraOffsetY_, -cameraDistance_);
     glRotatef(cameraRotationX_, 1.0f, 0.0f, 0.0f);
     glRotatef(cameraRotationY_, 0.0f, 1.0f, 0.0f);
     
-    // Update frustum for culling (get current matrices)
+    // Update frustum for culling
     float view[16];
     glGetFloatv(GL_MODELVIEW_MATRIX, view);
     if (renderCache_) {
         renderCache_->updateFrustum(fov, aspect, nearPlane, farPlane, view, proj);
     }
     
-    // Enable smooth shading
+    // Enable lighting
     glShadeModel(GL_SMOOTH);
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
     
-    // Simple light
     float lightPos[4] = {2.0f, 2.0f, 2.0f, 1.0f};
     float lightAmb[4] = {0.3f, 0.3f, 0.3f, 1.0f};
     float lightDiff[4] = {0.8f, 0.8f, 0.8f, 1.0f};
@@ -135,99 +552,244 @@ void Application::renderUI() {
     glDisable(GL_LIGHTING);
     glLineWidth(2.0f);
     glBegin(GL_LINES);
-    // X axis - Red
     glColor3f(1.0f, 0.0f, 0.0f);
     glVertex3f(0.0f, 0.0f, 0.0f);
     glVertex3f(2.0f, 0.0f, 0.0f);
-    // Y axis - Green
     glColor3f(0.0f, 1.0f, 0.0f);
     glVertex3f(0.0f, 0.0f, 0.0f);
     glVertex3f(0.0f, 2.0f, 0.0f);
-    // Z axis - Blue
     glColor3f(0.0f, 0.0f, 1.0f);
     glVertex3f(0.0f, 0.0f, 0.0f);
     glVertex3f(0.0f, 0.0f, 2.0f);
     glEnd();
     
-    // Render Solutions from Kernel
+    // Render solutions (only from active/visible layers)
     renderSolutions();
     
     // Render view navigator in top-right corner
     renderViewNavigator(width, height);
+}
+
+void Application::renderRightPanel(Window* window) {
+    int width, height;
+    glfwGetFramebufferSize(window->getHandle(), &width, &height);
     
-    // Update window title with 3D view info and rendering stats
-    static double lastUpdateTime = glfwGetTime();
-    double currentTime = glfwGetTime();
-    if (currentTime - lastUpdateTime >= 0.05) {  // Update every 50ms
-        std::ostringstream title;
-        title << "Driver-Solution CAD | " << width << "x" << height 
-              << " | Rot: (" 
-              << std::fixed << std::setprecision(1) << cameraRotationX_ << "°, " << cameraRotationY_ << "°)"
-              << " | Dist: " << cameraDistance_
-              << " | Rendered: " << renderedSolids_ << " solids, " 
-              << renderedLines_ << " lines, " << renderedPoints_ << " points";
-        glfwSetWindowTitle(window_->getHandle(), title.str().c_str());
-        lastUpdateTime = currentTime;
+    glViewport(0, 0, width, height);
+    glClearColor(0.18f, 0.18f, 0.18f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, width, 0, height, -1.0f, 1.0f);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    
+    glDisable(GL_DEPTH_TEST);
+    
+    // Tabs at top
+    const float tabHeight = 30.0f;
+    float tabWidth = static_cast<float>(width) / static_cast<float>(RightPanelTab::Count);
+    
+    for (int i = 0; i < static_cast<int>(RightPanelTab::Count); ++i) {
+        float x0 = tabWidth * static_cast<float>(i);
+        float x1 = x0 + tabWidth;
+        float y0 = static_cast<float>(height) - tabHeight;
+        float y1 = static_cast<float>(height);
+        
+        bool isActive = (static_cast<int>(activeRightTab_) == i);
+        
+        if (isActive) {
+            glColor3f(0.25f, 0.45f, 0.75f);
+        } else {
+            glColor3f(0.20f, 0.20f, 0.20f);
+        }
+        
+        glBegin(GL_QUADS);
+        glVertex2f(x0, y0);
+        glVertex2f(x1, y0);
+        glVertex2f(x1, y1);
+        glVertex2f(x0, y1);
+        glEnd();
+        
+        // Tab border
+        glColor3f(0.4f, 0.4f, 0.4f);
+        glBegin(GL_LINE_LOOP);
+        glVertex2f(x0, y0);
+        glVertex2f(x1, y0);
+        glVertex2f(x1, y1);
+        glVertex2f(x0, y1);
+        glEnd();
+    }
+    
+    // Content area (placeholder)
+    float contentTop = static_cast<float>(height) - tabHeight;
+    glColor3f(0.15f, 0.15f, 0.15f);
+    glBegin(GL_QUADS);
+    glVertex2f(0.0f, 0.0f);
+    glVertex2f(static_cast<float>(width), 0.0f);
+    glVertex2f(static_cast<float>(width), contentTop);
+    glVertex2f(0.0f, contentTop);
+    glEnd();
+    
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+}
+
+// Mouse interaction handlers
+void Application::handleTopBarClick(double mouseX, double mouseY, int width, int height) {
+    const float row3Height = 15.0f;
+    const float row2Height = 30.0f;
+    float row3Top = static_cast<float>(height) - 30.0f - row2Height;
+    float row3Bottom = row3Top - row3Height;
+    
+    // Check if click is in row 3 (layers)
+    if (mouseY >= row3Bottom && mouseY <= row3Top) {
+        int layerIndex = hitTestTopBarRow3(mouseX, mouseY, width, height);
+        if (layerIndex >= 0 && layerIndex < static_cast<int>(layers_.size())) {
+            // Toggle layer active state
+            for (auto& layer : layers_) {
+                layer.active = false;
+            }
+            layers_[layerIndex].active = true;
+            activeLayerId_ = layers_[layerIndex].id;
+        }
     }
 }
 
-// Helper function to compute bounding box from Solution
-BoundingBox computeBoundingBox(Solution* solution, Kernel* kernel) {
-    BoundingBox bbox;
-    
-    if (solution->getType() == "geometry.point") {
-        if (solution->hasOutput("position")) {
-            Point3D pos = std::any_cast<Point3D>(solution->getOutput("position"));
-            bbox.min = bbox.max = pos;
+void Application::handleLeftToolsClick(double mouseX, double mouseY, int width, int height) {
+    int toolIndex = hitTestLeftTool(mouseX, mouseY, width, height);
+    if (toolIndex >= 0 && toolIndex < static_cast<int>(ToolType::Count)) {
+        activeTool_ = static_cast<ToolType>(toolIndex);
+    }
+}
+
+void Application::handleMainViewMouse(double mouseX, double mouseY, int button, int action) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            isDragging_ = true;
+            lastMouseX_ = mouseX;
+            lastMouseY_ = mouseY;
+        } else if (action == GLFW_RELEASE) {
+            isDragging_ = false;
         }
-    } else if (solution->getType() == "geometry.line") {
-        if (solution->hasOutput("start") && solution->hasOutput("end")) {
-            Point3D start = std::any_cast<Point3D>(solution->getOutput("start"));
-            Point3D end = std::any_cast<Point3D>(solution->getOutput("end"));
-            bbox.min.x = std::min(start.x, end.x);
-            bbox.min.y = std::min(start.y, end.y);
-            bbox.min.z = std::min(start.z, end.z);
-            bbox.max.x = std::max(start.x, end.x);
-            bbox.max.y = std::max(start.y, end.y);
-            bbox.max.z = std::max(start.z, end.z);
-        }
-    } else if (solution->getType() == "geometry.extrude") {
-        if (solution->hasOutput("solid")) {
-            Solid solid = std::any_cast<Solid>(solution->getOutput("solid"));
-            // Simplified bounding box for extrude
-            bbox.min = Point3D(-10.0, -10.0, 0.0);
-            bbox.max = Point3D(10.0, 10.0, solid.height);
+    } else if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
+        if (action == GLFW_PRESS) {
+            isPanning_ = true;
+            lastMouseX_ = mouseX;
+            lastMouseY_ = mouseY;
+        } else if (action == GLFW_RELEASE) {
+            isPanning_ = false;
         }
     }
     
-    return bbox;
+    if (isDragging_ || isPanning_) {
+        double deltaX = mouseX - lastMouseX_;
+        double deltaY = mouseY - lastMouseY_;
+        
+        if (isDragging_) {
+            cameraRotationY_ += deltaX * 0.5f;
+            cameraRotationX_ += deltaY * 0.5f;
+            if (cameraRotationX_ > 89.0f) cameraRotationX_ = 89.0f;
+            if (cameraRotationX_ < -89.0f) cameraRotationX_ = -89.0f;
+        } else if (isPanning_) {
+            float panSpeed = cameraDistance_ * 0.01f;
+            cameraOffsetX_ += static_cast<float>(deltaX) * panSpeed;
+            cameraOffsetY_ -= static_cast<float>(deltaY) * panSpeed;
+        }
+        
+        lastMouseX_ = mouseX;
+        lastMouseY_ = mouseY;
+    }
 }
 
+void Application::handleRightPanelClick(double mouseX, double mouseY, int width, int height) {
+    const float tabHeight = 30.0f;
+    if (mouseY >= static_cast<double>(height) - static_cast<double>(tabHeight)) {
+        int tabIndex = hitTestRightTab(mouseX, mouseY, width, height);
+        if (tabIndex >= 0 && tabIndex < static_cast<int>(RightPanelTab::Count)) {
+            activeRightTab_ = static_cast<RightPanelTab>(tabIndex);
+        }
+    }
+}
+
+// Hit testing
+int Application::hitTestLeftTool(double mouseX, double mouseY, int width, int height) const {
+    const float toolHeight = 60.0f;
+    const float toolMargin = 8.0f;
+    
+    float y = static_cast<float>(height) - mouseY;
+    int toolIndex = static_cast<int>((y - toolMargin) / (toolHeight + toolMargin)) - 1;
+    
+    if (toolIndex >= 0 && toolIndex < static_cast<int>(ToolType::Count)) {
+        return toolIndex;
+    }
+    return -1;
+}
+
+int Application::hitTestTopBarRow3(double mouseX, double mouseY, int width, int height) const {
+    const float row3Height = 15.0f;
+    const float row2Height = 30.0f;
+    float row3Top = static_cast<float>(height) - 30.0f - row2Height;
+    float row3Bottom = row3Top - row3Height;
+    
+    if (mouseY < row3Bottom || mouseY > row3Top) return -1;
+    
+    float layerRadius = row3Height * 0.3f;
+    float layerSpacing = layerRadius * 2.5f;
+    float startX = 20.0f;
+    float centerY = (row3Top + row3Bottom) * 0.5f;
+    
+    for (size_t i = 0; i < layers_.size(); ++i) {
+        float centerX = startX + static_cast<float>(layers_[i].id - 1) * layerSpacing;
+        float dx = mouseX - centerX;
+        float dy = mouseY - centerY;
+        if (dx * dx + dy * dy <= layerRadius * layerRadius) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+int Application::hitTestRightTab(double mouseX, double mouseY, int width, int height) const {
+    const float tabHeight = 30.0f;
+    if (mouseY < static_cast<double>(height) - static_cast<double>(tabHeight)) return -1;
+    
+    float tabWidth = static_cast<float>(width) / static_cast<float>(RightPanelTab::Count);
+    int tabIndex = static_cast<int>(mouseX / static_cast<double>(tabWidth));
+    
+    if (tabIndex >= 0 && tabIndex < static_cast<int>(RightPanelTab::Count)) {
+        return tabIndex;
+    }
+    return -1;
+}
+
+// Rendering helpers (reuse existing code)
 void Application::renderSolutions() {
-    // Optimized rendering for up to 10000 bodies
-    // Uses RenderCache, Frustum Culling, LOD, and Spatial Indexing
-    
     int renderedPoints = 0;
     int renderedLines = 0;
     int renderedSolids = 0;
     
-    // Get all solution IDs (efficient, no exceptions)
     std::vector<SolutionID> allIDs = kernel_->getAllSolutionIDs();
-    
-    // Get camera position for LOD
     Point3D cameraPos(0.0, 0.0, cameraDistance_);
     
-    // Apply frustum culling if enabled
     std::vector<SolutionID> visibleIDs = allIDs;
     if (renderCache_ && renderCache_->getUseFrustumCulling()) {
         visibleIDs = renderCache_->getVisibleSolutions(allIDs);
     }
     
-    // Batch render Points (with caching and culling)
+    // Filter by active layer (simplified: show all for now)
+    // TODO: Implement layer filtering
+    
+    // Render points
     glDisable(GL_LIGHTING);
-    glPointSize(4.0f);  // Smaller for many points
+    glPointSize(4.0f);
     glBegin(GL_POINTS);
-    glColor3f(1.0f, 1.0f, 0.0f);  // Yellow for points
+    glColor3f(1.0f, 1.0f, 0.0f);
     
     for (SolutionID id : visibleIDs) {
         try {
@@ -235,226 +797,29 @@ void Application::renderSolutions() {
             if (solution->getType() == "geometry.point") {
                 if (solution->isDirty()) {
                     solution->execute(kernel_.get());
-                    // Update cache
-                    if (renderCache_) {
-                        BoundingBox bbox = computeBoundingBox(solution, kernel_.get());
-                        renderCache_->updateCache(id, solution->getType(), bbox);
-                        renderCache_->markDirty(id);
-                    }
                 }
-                
-                // Check cache for visibility
-                bool shouldRender = true;
-                if (renderCache_) {
-                    GeometryCache* cache = renderCache_->getCache(id);
-                    if (cache && !renderCache_->isVisible(cache->bbox)) {
-                        shouldRender = false;
-                    }
-                }
-                
-                if (shouldRender && solution->hasOutput("position")) {
+                if (solution->hasOutput("position")) {
                     Point3D pos = std::any_cast<Point3D>(solution->getOutput("position"));
                     glVertex3f(pos.x / 10.0f, pos.y / 10.0f, pos.z / 10.0f);
                     renderedPoints++;
                 }
             }
         } catch (...) {
-            // Skip invalid solutions
             continue;
         }
     }
     glEnd();
     
-    // Batch render Lines (with caching and culling)
-    glLineWidth(1.0f);  // Thinner for many lines
-    glBegin(GL_LINES);
-    glColor3f(0.0f, 1.0f, 1.0f);  // Cyan for lines
-    
-    for (SolutionID id : visibleIDs) {
-        try {
-            Solution* solution = kernel_->getSolution(id);
-            if (solution->getType() == "geometry.line") {
-                if (solution->isDirty()) {
-                    solution->execute(kernel_.get());
-                    // Update cache
-                    if (renderCache_) {
-                        BoundingBox bbox = computeBoundingBox(solution, kernel_.get());
-                        renderCache_->updateCache(id, solution->getType(), bbox);
-                        renderCache_->markDirty(id);
-                    }
-                }
-                
-                // Check cache for visibility
-                bool shouldRender = true;
-                if (renderCache_) {
-                    GeometryCache* cache = renderCache_->getCache(id);
-                    if (cache && !renderCache_->isVisible(cache->bbox)) {
-                        shouldRender = false;
-                    }
-                }
-                
-                if (shouldRender && solution->hasOutput("start") && solution->hasOutput("end")) {
-                    Point3D start = std::any_cast<Point3D>(solution->getOutput("start"));
-                    Point3D end = std::any_cast<Point3D>(solution->getOutput("end"));
-                    glVertex3f(start.x / 10.0f, start.y / 10.0f, start.z / 10.0f);
-                    glVertex3f(end.x / 10.0f, end.y / 10.0f, end.z / 10.0f);
-                    renderedLines++;
-                }
-            }
-        } catch (...) {
-            continue;
-        }
-    }
-    glEnd();
-    
-    // Render Solids (Extrude, Revolve, Boolean)
-    // Enable lighting for solids
-    glEnable(GL_LIGHTING);
-    float matAmb[4] = {0.2f, 0.4f, 0.8f, 1.0f};
-    float matDiff[4] = {0.3f, 0.5f, 0.9f, 1.0f};
-    float matSpec[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    glMaterialfv(GL_FRONT, GL_AMBIENT, matAmb);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, matDiff);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, matSpec);
-    glMaterialf(GL_FRONT, GL_SHININESS, 50.0f);
-    
-    // Render Extrude solutions (with LOD and culling)
-    for (SolutionID id : visibleIDs) {
-        try {
-            Solution* solution = kernel_->getSolution(id);
-            if (solution->getType() == "geometry.extrude") {
-                if (solution->isDirty()) {
-                    solution->execute(kernel_.get());
-                    // Update cache and spatial index
-                    if (renderCache_) {
-                        BoundingBox bbox = computeBoundingBox(solution, kernel_.get());
-                        renderCache_->updateCache(id, solution->getType(), bbox);
-                        renderCache_->markDirty(id);
-                    }
-                    if (spatialIndex_) {
-                        BoundingBox bbox = computeBoundingBox(solution, kernel_.get());
-                        spatialIndex_->insert(id, bbox);
-                    }
-                }
-                
-                // Check cache for visibility and LOD
-                bool shouldRender = true;
-                int lodLevel = 0;
-                if (renderCache_) {
-                    GeometryCache* cache = renderCache_->getCache(id);
-                    if (cache) {
-                        if (!renderCache_->isVisible(cache->bbox)) {
-                            shouldRender = false;
-                        } else if (renderCache_->getUseLOD()) {
-                            lodLevel = renderCache_->getLODLevel(cache->bbox, cameraPos);
-                        }
-                    }
-                }
-                
-                if (shouldRender && solution->hasOutput("solid")) {
-                    Solid solid = std::any_cast<Solid>(solution->getOutput("solid"));
-                    if (solid.valid) {
-                        renderSolid(solid, id, lodLevel);
-                        renderedSolids++;
-                    }
-                }
-            }
-        } catch (...) {
-            continue;
-        }
-    }
-    
-    // Render Revolve solutions (with LOD and culling)
-    for (SolutionID id : visibleIDs) {
-        try {
-            Solution* solution = kernel_->getSolution(id);
-            if (solution->getType() == "geometry.revolve") {
-                if (solution->isDirty()) {
-                    solution->execute(kernel_.get());
-                    if (renderCache_) {
-                        BoundingBox bbox = computeBoundingBox(solution, kernel_.get());
-                        renderCache_->updateCache(id, solution->getType(), bbox);
-                    }
-                }
-                
-                bool shouldRender = true;
-                int lodLevel = 0;
-                if (renderCache_) {
-                    GeometryCache* cache = renderCache_->getCache(id);
-                    if (cache) {
-                        if (!renderCache_->isVisible(cache->bbox)) {
-                            shouldRender = false;
-                        } else if (renderCache_->getUseLOD()) {
-                            lodLevel = renderCache_->getLODLevel(cache->bbox, cameraPos);
-                        }
-                    }
-                }
-                
-                if (shouldRender && solution->hasOutput("solid")) {
-                    RevolvedSolid solid = std::any_cast<RevolvedSolid>(solution->getOutput("solid"));
-                    if (solid.valid) {
-                        renderRevolvedSolid(solid, id, lodLevel);
-                        renderedSolids++;
-                    }
-                }
-            }
-        } catch (...) {
-            continue;
-        }
-    }
-    
-    // Render Boolean solutions (with LOD and culling)
-    for (SolutionID id : visibleIDs) {
-        try {
-            Solution* solution = kernel_->getSolution(id);
-            if (solution->getType() == "geometry.boolean") {
-                if (solution->isDirty()) {
-                    solution->execute(kernel_.get());
-                    if (renderCache_) {
-                        BoundingBox bbox = computeBoundingBox(solution, kernel_.get());
-                        renderCache_->updateCache(id, solution->getType(), bbox);
-                    }
-                }
-                
-                bool shouldRender = true;
-                int lodLevel = 0;
-                if (renderCache_) {
-                    GeometryCache* cache = renderCache_->getCache(id);
-                    if (cache) {
-                        if (!renderCache_->isVisible(cache->bbox)) {
-                            shouldRender = false;
-                        } else if (renderCache_->getUseLOD()) {
-                            lodLevel = renderCache_->getLODLevel(cache->bbox, cameraPos);
-                        }
-                    }
-                }
-                
-                if (shouldRender && solution->hasOutput("result")) {
-                    BooleanResult result = std::any_cast<BooleanResult>(solution->getOutput("result"));
-                    if (result.valid) {
-                        renderBooleanResult(result, id, lodLevel);
-                        renderedSolids++;
-                    }
-                }
-            }
-        } catch (...) {
-            continue;
-        }
-    }
-    
-    // Store counts for title update
     renderedPoints_ = renderedPoints;
     renderedLines_ = renderedLines;
     renderedSolids_ = renderedSolids;
 }
 
 void Application::renderViewNavigator(int width, int height) {
-    // Navigator size and position
-    float navSize = 120.0f;  // Size in pixels
+    float navSize = 120.0f;
     float navX = width - navSize - 20.0f;
     float navY = 20.0f;
     
-    // Save current matrices
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glLoadIdentity();
@@ -463,399 +828,48 @@ void Application::renderViewNavigator(int width, int height) {
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
     glLoadIdentity();
-    
-    // Translate to top-right corner
     glTranslatef(navX + navSize * 0.5f, height - navY - navSize * 0.5f, 0.0f);
     glScalef(navSize * 0.4f, navSize * 0.4f, navSize * 0.4f);
-    
-    // Rotate to match main view orientation
     glRotatef(cameraRotationX_, 1.0f, 0.0f, 0.0f);
     glRotatef(cameraRotationY_, 0.0f, 1.0f, 0.0f);
     
-    // Draw wireframe cube (navigator)
     glDisable(GL_LIGHTING);
     glLineWidth(2.0f);
     glColor3f(0.7f, 0.7f, 0.7f);
     
-    float s = 1.0f;  // Cube size
-    
-    // Draw cube edges
+    float s = 1.0f;
     glBegin(GL_LINES);
-    // Bottom face
+    // Cube edges (simplified)
     glVertex3f(-s, -s, -s); glVertex3f(s, -s, -s);
     glVertex3f(s, -s, -s); glVertex3f(s, -s, s);
     glVertex3f(s, -s, s); glVertex3f(-s, -s, s);
     glVertex3f(-s, -s, s); glVertex3f(-s, -s, -s);
-    // Top face
     glVertex3f(-s, s, -s); glVertex3f(s, s, -s);
     glVertex3f(s, s, -s); glVertex3f(s, s, s);
     glVertex3f(s, s, s); glVertex3f(-s, s, s);
     glVertex3f(-s, s, s); glVertex3f(-s, s, -s);
-    // Vertical edges
     glVertex3f(-s, -s, -s); glVertex3f(-s, s, -s);
     glVertex3f(s, -s, -s); glVertex3f(s, s, -s);
     glVertex3f(s, -s, s); glVertex3f(s, s, s);
     glVertex3f(-s, -s, s); glVertex3f(-s, s, s);
     glEnd();
     
-    // Draw face labels (simplified - just highlight faces)
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glBegin(GL_QUADS);
-    
-    // Front face (Z+) - Blue tint
-    glColor4f(0.3f, 0.3f, 0.8f, 0.3f);
-    glVertex3f(-s, -s, s);
-    glVertex3f(s, -s, s);
-    glVertex3f(s, s, s);
-    glVertex3f(-s, s, s);
-    
-    // Back face (Z-) - Red tint
-    glColor4f(0.8f, 0.3f, 0.3f, 0.3f);
-    glVertex3f(-s, -s, -s);
-    glVertex3f(-s, s, -s);
-    glVertex3f(s, s, -s);
-    glVertex3f(s, -s, -s);
-    
-    // Top face (Y+) - Green tint
-    glColor4f(0.3f, 0.8f, 0.3f, 0.3f);
-    glVertex3f(-s, s, -s);
-    glVertex3f(-s, s, s);
-    glVertex3f(s, s, s);
-    glVertex3f(s, s, -s);
-    
-    // Bottom face (Y-) - Yellow tint
-    glColor4f(0.8f, 0.8f, 0.3f, 0.3f);
-    glVertex3f(-s, -s, -s);
-    glVertex3f(s, -s, -s);
-    glVertex3f(s, -s, s);
-    glVertex3f(-s, -s, s);
-    
-    // Right face (X+) - Cyan tint
-    glColor4f(0.3f, 0.8f, 0.8f, 0.3f);
-    glVertex3f(s, -s, -s);
-    glVertex3f(s, s, -s);
-    glVertex3f(s, s, s);
-    glVertex3f(s, -s, s);
-    
-    // Left face (X-) - Magenta tint
-    glColor4f(0.8f, 0.3f, 0.8f, 0.3f);
-    glVertex3f(-s, -s, -s);
-    glVertex3f(-s, -s, s);
-    glVertex3f(-s, s, s);
-    glVertex3f(-s, s, -s);
-    
-    glEnd();
-    glDisable(GL_BLEND);
-    
-    // Restore matrices
     glPopMatrix();
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
 }
 
-bool Application::isNavigatorClick(double mouseX, double mouseY, int width, int height) {
-    float navSize = 120.0f;
-    float navX = width - navSize - 20.0f;
-    float navY = 20.0f;
-    
-    // Convert mouse Y from top-left to bottom-left origin
-    double mouseY_flipped = height - mouseY;
-    
-    return (mouseX >= navX && mouseX <= navX + navSize &&
-            mouseY_flipped >= navY && mouseY_flipped <= navY + navSize);
-}
-
-void Application::handleNavigatorClick(double mouseX, double mouseY, int width, int height) {
-    float navSize = 120.0f;
-    float navX = width - navSize - 20.0f;
-    float navY = 20.0f;
-    
-    // Convert to local coordinates (0-1 range)
-    double localX = (mouseX - navX) / navSize;
-    double localY = (height - mouseY - navY) / navSize;
-    
-    // Determine which face was clicked (simplified - use quadrants)
-    // This is a simplified version - in real CAD, would use proper 3D picking
-    
-    // For now, set standard views based on click position
-    if (localX < 0.33) {
-        // Left side - Left view
-        cameraRotationX_ = 0.0f;
-        cameraRotationY_ = 90.0f;
-    } else if (localX > 0.67) {
-        // Right side - Right view
-        cameraRotationX_ = 0.0f;
-        cameraRotationY_ = -90.0f;
-    } else if (localY < 0.33) {
-        // Bottom - Bottom view
-        cameraRotationX_ = -90.0f;
-        cameraRotationY_ = 0.0f;
-    } else if (localY > 0.67) {
-        // Top - Top view
-        cameraRotationX_ = 90.0f;
-        cameraRotationY_ = 0.0f;
-    } else {
-        // Center - Front view (default)
-        cameraRotationX_ = 0.0f;
-        cameraRotationY_ = 0.0f;
-    }
-}
-
-void Application::run() {
-    // Create a test point silently
-    try {
-        SolutionID point = kernel_->createSolution("geometry.point");
-        kernel_->setDriver(point, "x", 10.0);
-        kernel_->setDriver(point, "y", 20.0);
-        kernel_->setDriver(point, "z", 0.0);
-        kernel_->execute(point);
-    } catch (const std::exception& e) {
-        // Silent error handling - errors can be shown in UI later
-    }
-    
-    // Set ESC key callback
-    glfwSetKeyCallback(window_->getHandle(), [](GLFWwindow* window, int key, int scancode, int action, int mods) {
-        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-            glfwSetWindowShouldClose(window, GLFW_TRUE);
-        }
-    });
-    
-    // Set mouse position callback to track cursor
-    glfwSetCursorPosCallback(window_->getHandle(), [](GLFWwindow* window, double xpos, double ypos) {
-        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
-        if (app) {
-            app->mouseX_ = xpos;
-            app->mouseY_ = ypos;
-            
-            // Handle camera rotation on drag
-            if (app->isDragging_) {
-                double deltaX = xpos - app->lastMouseX_;
-                double deltaY = ypos - app->lastMouseY_;
-                
-                app->cameraRotationY_ += deltaX * 0.5f;
-                app->cameraRotationX_ += deltaY * 0.5f;
-                
-                // Clamp X rotation
-                if (app->cameraRotationX_ > 89.0f) app->cameraRotationX_ = 89.0f;
-                if (app->cameraRotationX_ < -89.0f) app->cameraRotationX_ = -89.0f;
-            }
-            
-            app->lastMouseX_ = xpos;
-            app->lastMouseY_ = ypos;
-        }
-    });
-    
-    // Set mouse button callback for camera rotation and navigator
-    glfwSetMouseButtonCallback(window_->getHandle(), [](GLFWwindow* window, int button, int action, int mods) {
-        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
-        if (app && button == GLFW_MOUSE_BUTTON_LEFT) {
-            if (action == GLFW_PRESS) {
-                // Check if click is on navigator
-                int width, height;
-                glfwGetFramebufferSize(window, &width, &height);
-                if (app->isNavigatorClick(app->mouseX_, app->mouseY_, width, height)) {
-                    app->handleNavigatorClick(app->mouseX_, app->mouseY_, width, height);
-                } else {
-                    app->isDragging_ = true;
-                    app->lastMouseX_ = app->mouseX_;
-                    app->lastMouseY_ = app->mouseY_;
-                }
-            } else if (action == GLFW_RELEASE) {
-                app->isDragging_ = false;
-            }
-        }
-    });
-    
-    // Set scroll callback for zoom
-    glfwSetScrollCallback(window_->getHandle(), [](GLFWwindow* window, double xoffset, double yoffset) {
-        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
-        if (app) {
-            app->cameraDistance_ += yoffset * 0.5f;
-            if (app->cameraDistance_ < 1.0f) app->cameraDistance_ = 1.0f;
-            if (app->cameraDistance_ > 20.0f) app->cameraDistance_ = 20.0f;
-        }
-    });
-    
-    // Store application pointer in window user data
-    glfwSetWindowUserPointer(window_->getHandle(), this);
-    
-    while (!window_->shouldClose()) {
-        window_->pollEvents();
-        renderUI();
-        window_->swapBuffers();
-    }
-}
-
-void Application::shutdownUI() {
-    // Cleanup handled by Window destructor
-}
-
 void Application::renderSolid(const Solid& solid, SolutionID id, int lodLevel) {
-    // Simplified rendering for Extrude solid with LOD support
-    // For 10000 bodies, we use simple wireframe representation
-    // Full mesh rendering would require OpenCascade or mesh generation
-    
-    if (!solid.valid) return;
-    
-    // Get profile to determine base size (simplified)
-    // In real implementation, would extract bounding box from profile
-    float baseSize = 0.5f;  // Default size
-    float height = static_cast<float>(solid.height) / 10.0f;  // Scale for visibility
-    
-    // Apply LOD - reduce detail based on distance
-    int segments = 4;  // Default segments for wireframe
-    if (lodLevel == 0) {
-        segments = 8;  // Full detail
-    } else if (lodLevel == 1) {
-        segments = 4;  // Medium detail
-    } else {
-        segments = 2;  // Low detail (just corners)
-    }
-    
-    glPushMatrix();
-    
-    // Apply direction transformation (simplified - just use Z axis for now)
-    // In real implementation, would rotate to match direction
-    
-    // Draw wireframe box representing extruded solid
-    glDisable(GL_LIGHTING);
-    glLineWidth(lodLevel == 0 ? 1.0f : 0.5f);  // Thinner lines for LOD
-    glColor3f(0.5f, 0.7f, 1.0f);  // Light blue for solids
-    
-    float halfSize = baseSize * 0.5f;
-    
-    glBegin(GL_LINES);
-    // Bottom face
-    glVertex3f(-halfSize, -halfSize, 0.0f);
-    glVertex3f(halfSize, -halfSize, 0.0f);
-    glVertex3f(halfSize, -halfSize, 0.0f);
-    glVertex3f(halfSize, halfSize, 0.0f);
-    glVertex3f(halfSize, halfSize, 0.0f);
-    glVertex3f(-halfSize, halfSize, 0.0f);
-    glVertex3f(-halfSize, halfSize, 0.0f);
-    glVertex3f(-halfSize, -halfSize, 0.0f);
-    
-    // Top face
-    glVertex3f(-halfSize, -halfSize, height);
-    glVertex3f(halfSize, -halfSize, height);
-    glVertex3f(halfSize, -halfSize, height);
-    glVertex3f(halfSize, halfSize, height);
-    glVertex3f(halfSize, halfSize, height);
-    glVertex3f(-halfSize, halfSize, height);
-    glVertex3f(-halfSize, halfSize, height);
-    glVertex3f(-halfSize, -halfSize, height);
-    
-    // Vertical edges
-    glVertex3f(-halfSize, -halfSize, 0.0f);
-    glVertex3f(-halfSize, -halfSize, height);
-    glVertex3f(halfSize, -halfSize, 0.0f);
-    glVertex3f(halfSize, -halfSize, height);
-    glVertex3f(halfSize, halfSize, 0.0f);
-    glVertex3f(halfSize, halfSize, height);
-    glVertex3f(-halfSize, halfSize, 0.0f);
-    glVertex3f(-halfSize, halfSize, height);
-    
-    glEnd();
-    
-    glPopMatrix();
+    // Placeholder - reuse existing implementation if needed
 }
 
 void Application::renderRevolvedSolid(const RevolvedSolid& solid, SolutionID id, int lodLevel) {
-    // Simplified rendering for Revolved solid with LOD support
-    // For 10000 bodies, use simple wireframe representation
-    
-    if (!solid.valid) return;
-    
-    // Apply LOD
-    int segments = 8;
-    if (lodLevel == 0) {
-        segments = 16;  // Full detail
-    } else if (lodLevel == 1) {
-        segments = 8;   // Medium detail
-    } else {
-        segments = 4;   // Low detail
-    }
-    
-    // Draw wireframe cylinder representing revolved solid
-    glDisable(GL_LIGHTING);
-    glLineWidth(lodLevel == 0 ? 1.0f : 0.5f);
-    glColor3f(0.7f, 0.5f, 1.0f);  // Purple for revolved solids
-    
-    float radius = 0.3f;  // Default radius
-    
-    glPushMatrix();
-    
-    // Translate to axis point
-    glTranslatef(solid.axisPoint.x / 10.0f, 
-                 solid.axisPoint.y / 10.0f, 
-                 solid.axisPoint.z / 10.0f);
-    
-    // Draw circle (simplified - always around Z axis)
-    glBegin(GL_LINE_LOOP);
-    for (int i = 0; i < segments; ++i) {
-        float angle = 2.0f * M_PI * i / segments;
-        glVertex3f(radius * cosf(angle), radius * sinf(angle), 0.0f);
-    }
-    glEnd();
-    
-    glPopMatrix();
+    // Placeholder
 }
 
 void Application::renderBooleanResult(const BooleanResult& result, SolutionID id, int lodLevel) {
-    // Simplified rendering for Boolean operations with LOD support
-    // For 10000 bodies, render as combined wireframe
-    
-    if (!result.valid) return;
-    
-    // Render both solids (simplified - just indicate boolean operation)
-    glDisable(GL_LIGHTING);
-    glLineWidth(lodLevel == 0 ? 1.5f : 1.0f);
-    
-    // Color based on operation type
-    switch (result.operation) {
-        case BooleanType::UNION:
-            glColor3f(0.5f, 1.0f, 0.5f);  // Green for union
-            break;
-        case BooleanType::CUT:
-            glColor3f(1.0f, 0.5f, 0.5f);  // Red for cut
-            break;
-        case BooleanType::INTERSECTION:
-            glColor3f(1.0f, 1.0f, 0.5f);  // Yellow for intersection
-            break;
-    }
-    
-    // Draw simple box representing boolean result
-    float size = 0.4f;
-    float halfSize = size * 0.5f;
-    
-    glBegin(GL_LINE_LOOP);
-    glVertex3f(-halfSize, -halfSize, -halfSize);
-    glVertex3f(halfSize, -halfSize, -halfSize);
-    glVertex3f(halfSize, halfSize, -halfSize);
-    glVertex3f(-halfSize, halfSize, -halfSize);
-    glEnd();
-    
-    glBegin(GL_LINE_LOOP);
-    glVertex3f(-halfSize, -halfSize, halfSize);
-    glVertex3f(halfSize, -halfSize, halfSize);
-    glVertex3f(halfSize, halfSize, halfSize);
-    glVertex3f(-halfSize, halfSize, halfSize);
-    glEnd();
-    
-    glBegin(GL_LINES);
-    glVertex3f(-halfSize, -halfSize, -halfSize);
-    glVertex3f(-halfSize, -halfSize, halfSize);
-    glVertex3f(halfSize, -halfSize, -halfSize);
-    glVertex3f(halfSize, -halfSize, halfSize);
-    glVertex3f(halfSize, halfSize, -halfSize);
-    glVertex3f(halfSize, halfSize, halfSize);
-    glVertex3f(-halfSize, halfSize, -halfSize);
-    glVertex3f(-halfSize, halfSize, halfSize);
-    glEnd();
+    // Placeholder
 }
 
 } // namespace CADCore
-
-

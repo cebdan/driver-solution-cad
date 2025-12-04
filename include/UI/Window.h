@@ -10,6 +10,10 @@ namespace CADCore {
 /// Simple window wrapper for GLFW
 class Window {
 public:
+    // Static methods for GLFW lifecycle (called once by Application)
+    static bool initializeGLFW();
+    static void terminateGLFW();
+    
     Window(int width, int height, const std::string& title);
     ~Window();
     
