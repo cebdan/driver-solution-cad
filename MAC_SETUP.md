@@ -115,3 +115,4 @@ open driver-solution-cad.xcodeproj
 - Приложение завершится, когда все окна будут закрыты
 - Код полностью кроссплатформенный (macOS, Windows, Linux)
 
+

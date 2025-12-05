@@ -40,6 +40,9 @@ CTestTestfile.cmake
 compile_commands.json
 *.log
 
+# User configuration files
+close.config
+
 # macOS
 .DS_Store
 *.dSYM/

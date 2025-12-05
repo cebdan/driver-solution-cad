@@ -2,6 +2,7 @@
 
 #include "Core/Kernel.h"
 #include "UI/Window.h"
+#include "UI/WindowConfig.h"
 #include "UI/RenderCache.h"
 #include "UI/Octree.h"
 #include "Solutions/ExtrudeSolution.h"
@@ -32,6 +33,7 @@ private:
     std::unique_ptr<Kernel> kernel_;
     std::unique_ptr<RenderCache> renderCache_;
     std::unique_ptr<Octree> spatialIndex_;
+    std::unique_ptr<WindowConfig> windowConfig_;
     
     // Tool / UI state
     enum class ToolType {
@@ -121,6 +123,12 @@ private:
     void setupCallbacks();
     void initializeLayers();
     void initializeToolGroups();
+    
+    // Window configuration
+    void saveWindowSettings(const std::string& windowName, GLFWwindow* window);
+    WindowSettings loadWindowSettings(const std::string& windowName) const;
+    void applyWindowSettings(const WindowSettings& settings, GLFWwindow* window);
+    WindowSettings getWindowSettings(GLFWwindow* window) const;
 };
 
 } // namespace CADCore

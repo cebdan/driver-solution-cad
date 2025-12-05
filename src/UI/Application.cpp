@@ -55,6 +55,10 @@ Application::Application()
     worldBounds.max = Point3D(1000.0, 1000.0, 1000.0);
     spatialIndex_ = std::make_unique<Octree>(worldBounds, 20, 10);
     
+    // Create window configuration manager
+    windowConfig_ = std::make_unique<WindowConfig>("close.config");
+    windowConfig_->loadFromFile();
+    
     // Initialize UI state
     initializeLayers();
     initializeToolGroups();
@@ -76,6 +80,23 @@ Application::Application()
 }
 
 Application::~Application() {
+    // Save window settings before closing
+    if (windowConfig_) {
+        if (windowTopBar_ && !windowTopBar_->shouldClose()) {
+            saveWindowSettings("TopBar", windowTopBar_->getHandle());
+        }
+        if (windowLeftTools_ && !windowLeftTools_->shouldClose()) {
+            saveWindowSettings("LeftTools", windowLeftTools_->getHandle());
+        }
+        if (windowMainView_ && !windowMainView_->shouldClose()) {
+            saveWindowSettings("MainView", windowMainView_->getHandle());
+        }
+        if (windowRightPanel_ && !windowRightPanel_->shouldClose()) {
+            saveWindowSettings("RightPanel", windowRightPanel_->getHandle());
+        }
+        windowConfig_->saveToFile();
+    }
+    
     // Windows will be destroyed automatically
     // Terminate GLFW after all windows are destroyed
     Window::terminateGLFW();
@@ -83,16 +104,32 @@ Application::~Application() {
 
 void Application::initializeWindows() {
     // Window 1: Top Bar (horizontal, narrow)
-    windowTopBar_ = std::make_unique<Window>(1920, 100, "Top Bar");
+    WindowSettings topBarSettings = windowConfig_->loadWindowSettings("TopBar");
+    int topBarWidth = (topBarSettings.width != -1) ? topBarSettings.width : 1920;
+    int topBarHeight = (topBarSettings.height != -1) ? topBarSettings.height : 100;
+    windowTopBar_ = std::make_unique<Window>(topBarWidth, topBarHeight, "Top Bar");
+    applyWindowSettings(topBarSettings, windowTopBar_->getHandle());
     
     // Window 2: Left Tools (vertical, narrow)
-    windowLeftTools_ = std::make_unique<Window>(80, 800, "Left Tools");
+    WindowSettings leftToolsSettings = windowConfig_->loadWindowSettings("LeftTools");
+    int leftToolsWidth = (leftToolsSettings.width != -1) ? leftToolsSettings.width : 80;
+    int leftToolsHeight = (leftToolsSettings.height != -1) ? leftToolsSettings.height : 800;
+    windowLeftTools_ = std::make_unique<Window>(leftToolsWidth, leftToolsHeight, "Left Tools");
+    applyWindowSettings(leftToolsSettings, windowLeftTools_->getHandle());
     
     // Window 3: Main View (large, main 3D/2D view)
-    windowMainView_ = std::make_unique<Window>(1280, 720, "Main View");
+    WindowSettings mainViewSettings = windowConfig_->loadWindowSettings("MainView");
+    int mainViewWidth = (mainViewSettings.width != -1) ? mainViewSettings.width : 1280;
+    int mainViewHeight = (mainViewSettings.height != -1) ? mainViewSettings.height : 720;
+    windowMainView_ = std::make_unique<Window>(mainViewWidth, mainViewHeight, "Main View");
+    applyWindowSettings(mainViewSettings, windowMainView_->getHandle());
     
     // Window 4: Right Panel (vertical, with tabs)
-    windowRightPanel_ = std::make_unique<Window>(300, 800, "Right Panel");
+    WindowSettings rightPanelSettings = windowConfig_->loadWindowSettings("RightPanel");
+    int rightPanelWidth = (rightPanelSettings.width != -1) ? rightPanelSettings.width : 300;
+    int rightPanelHeight = (rightPanelSettings.height != -1) ? rightPanelSettings.height : 800;
+    windowRightPanel_ = std::make_unique<Window>(rightPanelWidth, rightPanelHeight, "Right Panel");
+    applyWindowSettings(rightPanelSettings, windowRightPanel_->getHandle());
 }
 
 void Application::initializeLayers() {
@@ -158,7 +195,7 @@ void Application::setupCallbacks() {
         if (app && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
             double x, y;
             glfwGetCursorPos(window, &x, &y);
-            int width, height;
+    int width, height;
             glfwGetFramebufferSize(window, &width, &height);
             app->handleTopBarClick(x, y, width, height);
         }
@@ -225,6 +262,20 @@ void Application::setupCallbacks() {
 void Application::run() {
     // Main loop: handle all 4 windows
     while (true) {
+        // Save settings for windows that are about to close
+        if (windowTopBar_ && windowTopBar_->shouldClose()) {
+            saveWindowSettings("TopBar", windowTopBar_->getHandle());
+        }
+        if (windowLeftTools_ && windowLeftTools_->shouldClose()) {
+            saveWindowSettings("LeftTools", windowLeftTools_->getHandle());
+        }
+        if (windowMainView_ && windowMainView_->shouldClose()) {
+            saveWindowSettings("MainView", windowMainView_->getHandle());
+        }
+        if (windowRightPanel_ && windowRightPanel_->shouldClose()) {
+            saveWindowSettings("RightPanel", windowRightPanel_->getHandle());
+        }
+        
         // Check if all windows are closed
         bool allClosed = true;
         if (windowTopBar_ && !windowTopBar_->shouldClose()) allClosed = false;
@@ -232,7 +283,13 @@ void Application::run() {
         if (windowMainView_ && !windowMainView_->shouldClose()) allClosed = false;
         if (windowRightPanel_ && !windowRightPanel_->shouldClose()) allClosed = false;
         
-        if (allClosed) break;
+        if (allClosed) {
+            // Save all settings before exit
+            if (windowConfig_) {
+                windowConfig_->saveToFile();
+            }
+            break;
+        }
         
         // Poll events for all windows
         glfwPollEvents();
@@ -870,6 +927,144 @@ void Application::renderRevolvedSolid(const RevolvedSolid& solid, SolutionID id,
 
 void Application::renderBooleanResult(const BooleanResult& result, SolutionID id, int lodLevel) {
     // Placeholder
+}
+
+// Window configuration methods
+void Application::saveWindowSettings(const std::string& windowName, GLFWwindow* window) {
+    if (!windowConfig_ || !window) return;
+    
+    WindowSettings settings = getWindowSettings(window);
+    settings.windowName = windowName;
+    windowConfig_->saveWindowSettings(windowName, settings);
+}
+
+WindowSettings Application::loadWindowSettings(const std::string& windowName) const {
+    if (!windowConfig_) {
+        WindowSettings defaults;
+        defaults.windowName = windowName;
+        return defaults;
+    }
+    return windowConfig_->loadWindowSettings(windowName);
+}
+
+void Application::applyWindowSettings(const WindowSettings& settings, GLFWwindow* window) {
+    if (!window) return;
+    
+    // Set position
+    if (settings.x != -1 && settings.y != -1) {
+        glfwSetWindowPos(window, settings.x, settings.y);
+    }
+    
+    // Set size (if not maximized)
+    if (!settings.maximized && settings.width != -1 && settings.height != -1) {
+        glfwSetWindowSize(window, settings.width, settings.height);
+    }
+    
+    // Set maximized state
+    if (settings.maximized) {
+        glfwMaximizeWindow(window);
+    }
+    
+    // Set minimized state
+    if (settings.minimized) {
+        glfwIconifyWindow(window);
+    }
+    
+    // Set monitor (if specified)
+    if (settings.monitorIndex != -1) {
+        int monitorCount;
+        GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+        if (settings.monitorIndex >= 0 && settings.monitorIndex < monitorCount) {
+            const GLFWvidmode* mode = glfwGetVideoMode(monitors[settings.monitorIndex]);
+            if (mode) {
+                int x, y;
+                glfwGetMonitorPos(monitors[settings.monitorIndex], &x, &y);
+                glfwSetWindowPos(window, x, y);
+            }
+        }
+    }
+    
+    // Set visibility
+    if (!settings.visible) {
+        glfwHideWindow(window);
+    } else {
+        glfwShowWindow(window);
+    }
+    
+    // Set focus
+    if (settings.focused) {
+        glfwFocusWindow(window);
+    }
+}
+
+WindowSettings Application::getWindowSettings(GLFWwindow* window) const {
+    WindowSettings settings;
+    if (!window) return settings;
+    
+    // Get position
+    glfwGetWindowPos(window, &settings.x, &settings.y);
+    
+    // Get size
+    glfwGetWindowSize(window, &settings.width, &settings.height);
+    
+    // Get maximized state
+    settings.maximized = (glfwGetWindowAttrib(window, GLFW_MAXIMIZED) == GLFW_TRUE);
+    
+    // Get minimized/iconified state
+    settings.minimized = (glfwGetWindowAttrib(window, GLFW_ICONIFIED) == GLFW_TRUE);
+    
+    // Get monitor
+    GLFWmonitor* monitor = glfwGetWindowMonitor(window);
+    if (monitor) {
+        // Window is fullscreen on this monitor
+        int monitorCount;
+        GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+        for (int i = 0; i < monitorCount; ++i) {
+            if (monitors[i] == monitor) {
+                settings.monitorIndex = i;
+                const char* name = glfwGetMonitorName(monitor);
+                if (name) {
+                    settings.monitorName = name;
+                }
+                break;
+            }
+        }
+    } else {
+        // Window is windowed, find which monitor it's on
+        int x, y;
+        glfwGetWindowPos(window, &x, &y);
+        int w, h;
+        glfwGetWindowSize(window, &w, &h);
+        int centerX = x + w / 2;
+        int centerY = y + h / 2;
+        
+        int monitorCount;
+        GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+        for (int i = 0; i < monitorCount; ++i) {
+            int mx, my;
+            glfwGetMonitorPos(monitors[i], &mx, &my);
+            const GLFWvidmode* mode = glfwGetVideoMode(monitors[i]);
+            if (mode) {
+                if (centerX >= mx && centerX < mx + mode->width &&
+                    centerY >= my && centerY < my + mode->height) {
+                    settings.monitorIndex = i;
+                    const char* name = glfwGetMonitorName(monitors[i]);
+                    if (name) {
+                        settings.monitorName = name;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    
+    // Get visibility
+    settings.visible = (glfwGetWindowAttrib(window, GLFW_VISIBLE) == GLFW_TRUE);
+    
+    // Get focus
+    settings.focused = (glfwGetWindowAttrib(window, GLFW_FOCUSED) == GLFW_TRUE);
+    
+    return settings;
 }
 
 } // namespace CADCore

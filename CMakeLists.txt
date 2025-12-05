@@ -170,6 +170,7 @@ if(BUILD_UI)
         # Create UI library
         add_library(CADUI STATIC
             src/UI/Window.cpp
+            src/UI/WindowConfig.cpp
             src/UI/Application.cpp
             src/UI/RenderCache.cpp
             src/UI/Octree.cpp
