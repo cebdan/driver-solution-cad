@@ -3,11 +3,31 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <filesystem>
 
 namespace CADCore {
 
 WindowConfig::WindowConfig(const std::string& configPath)
     : configPath_(configPath) {
+    // Convert to absolute path if relative
+    if (!std::filesystem::path(configPath).is_absolute()) {
+        // Try to find project root (look for CMakeLists.txt or .git)
+        std::filesystem::path current = std::filesystem::current_path();
+        std::filesystem::path projectRoot = current;
+        
+        // Go up directories until we find CMakeLists.txt or .git
+        for (int i = 0; i < 5; ++i) {
+            if (std::filesystem::exists(projectRoot / "CMakeLists.txt") ||
+                std::filesystem::exists(projectRoot / ".git")) {
+                configPath_ = (projectRoot / configPath).string();
+                break;
+            }
+            projectRoot = projectRoot.parent_path();
+            if (projectRoot == projectRoot.root_path()) break;
+        }
+    }
+    
+    std::cout << "WindowConfig: Using config file: " << configPath_ << std::endl;
     loadFromFile();
 }
 
@@ -30,6 +50,7 @@ bool WindowConfig::saveToFile() const {
     std::ofstream file(configPath_);
     if (!file.is_open()) {
         std::cerr << "Failed to open config file for writing: " << configPath_ << std::endl;
+        std::cerr << "Current directory: " << std::filesystem::current_path().string() << std::endl;
         return false;
     }
     
@@ -45,6 +66,7 @@ bool WindowConfig::saveToFile() const {
     }
     
     file.close();
+    std::cout << "Window settings saved to: " << configPath_ << " (" << settings_.size() << " windows)" << std::endl;
     return true;
 }
 

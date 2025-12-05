@@ -15,6 +15,7 @@
 #include <cmath>
 #include <thread>
 #include <chrono>
+#include <map>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -200,6 +201,21 @@ void Application::setupCallbacks() {
             app->handleTopBarClick(x, y, width, height);
         }
     });
+    // Save settings when window is moved or resized, and constrain to screen
+    glfwSetWindowPosCallback(windowTopBar_->getHandle(), [](GLFWwindow* window, int x, int y) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->constrainWindowToScreen(window);
+            app->saveWindowSettings("TopBar", window);
+        }
+    });
+    glfwSetWindowSizeCallback(windowTopBar_->getHandle(), [](GLFWwindow* window, int width, int height) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->constrainWindowToScreen(window);
+            app->saveWindowSettings("TopBar", window);
+        }
+    });
     glfwSetWindowUserPointer(windowTopBar_->getHandle(), this);
     
     // LeftTools callbacks
@@ -211,6 +227,20 @@ void Application::setupCallbacks() {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
             app->handleLeftToolsClick(x, y, width, height);
+        }
+    });
+    glfwSetWindowPosCallback(windowLeftTools_->getHandle(), [](GLFWwindow* window, int x, int y) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->constrainWindowToScreen(window);
+            app->saveWindowSettings("LeftTools", window);
+        }
+    });
+    glfwSetWindowSizeCallback(windowLeftTools_->getHandle(), [](GLFWwindow* window, int width, int height) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->constrainWindowToScreen(window);
+            app->saveWindowSettings("LeftTools", window);
         }
     });
     glfwSetWindowUserPointer(windowLeftTools_->getHandle(), this);
@@ -243,6 +273,20 @@ void Application::setupCallbacks() {
             glfwSetWindowShouldClose(window, GLFW_TRUE);
         }
     });
+    glfwSetWindowPosCallback(windowMainView_->getHandle(), [](GLFWwindow* window, int x, int y) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->constrainWindowToScreen(window);
+            app->saveWindowSettings("MainView", window);
+        }
+    });
+    glfwSetWindowSizeCallback(windowMainView_->getHandle(), [](GLFWwindow* window, int width, int height) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->constrainWindowToScreen(window);
+            app->saveWindowSettings("MainView", window);
+        }
+    });
     glfwSetWindowUserPointer(windowMainView_->getHandle(), this);
     
     // RightPanel callbacks
@@ -254,6 +298,20 @@ void Application::setupCallbacks() {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
             app->handleRightPanelClick(x, y, width, height);
+        }
+    });
+    glfwSetWindowPosCallback(windowRightPanel_->getHandle(), [](GLFWwindow* window, int x, int y) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->constrainWindowToScreen(window);
+            app->saveWindowSettings("RightPanel", window);
+        }
+    });
+    glfwSetWindowSizeCallback(windowRightPanel_->getHandle(), [](GLFWwindow* window, int width, int height) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            app->constrainWindowToScreen(window);
+            app->saveWindowSettings("RightPanel", window);
         }
     });
     glfwSetWindowUserPointer(windowRightPanel_->getHandle(), this);
@@ -931,11 +989,26 @@ void Application::renderBooleanResult(const BooleanResult& result, SolutionID id
 
 // Window configuration methods
 void Application::saveWindowSettings(const std::string& windowName, GLFWwindow* window) {
-    if (!windowConfig_ || !window) return;
+    if (!windowConfig_ || !window) {
+        std::cerr << "saveWindowSettings: windowConfig_ or window is null" << std::endl;
+        return;
+    }
     
     WindowSettings settings = getWindowSettings(window);
     settings.windowName = windowName;
     windowConfig_->saveWindowSettings(windowName, settings);
+    
+    // Save to file immediately (with debouncing - save max once per second per window)
+    static std::map<std::string, double> lastSaveTime;
+    double currentTime = glfwGetTime();
+    if (lastSaveTime.find(windowName) == lastSaveTime.end() || 
+        (currentTime - lastSaveTime[windowName]) > 1.0) {
+        bool saved = windowConfig_->saveToFile();
+        if (!saved) {
+            std::cerr << "Failed to save window settings to file" << std::endl;
+        }
+        lastSaveTime[windowName] = currentTime;
+    }
 }
 
 WindowSettings Application::loadWindowSettings(const std::string& windowName) const {
@@ -950,14 +1023,40 @@ WindowSettings Application::loadWindowSettings(const std::string& windowName) co
 void Application::applyWindowSettings(const WindowSettings& settings, GLFWwindow* window) {
     if (!window) return;
     
-    // Set position
+    // Get window size first (needed for validation)
+    int windowWidth = settings.width;
+    int windowHeight = settings.height;
+    if (windowWidth == -1 || windowHeight == -1) {
+        glfwGetWindowSize(window, &windowWidth, &windowHeight);
+    }
+    
+    // Validate and set position
     if (settings.x != -1 && settings.y != -1) {
-        glfwSetWindowPos(window, settings.x, settings.y);
+        int x = settings.x;
+        int y = settings.y;
+        if (validateWindowPosition(x, y, windowWidth, windowHeight)) {
+            glfwSetWindowPos(window, x, y);
+                } else {
+            // Position invalid, use default (center of primary monitor)
+            GLFWmonitor* primary = glfwGetPrimaryMonitor();
+            if (primary) {
+                const GLFWvidmode* mode = glfwGetVideoMode(primary);
+                if (mode) {
+                    int mx, my;
+                    glfwGetMonitorPos(primary, &mx, &my);
+                    x = mx + (mode->width - windowWidth) / 2;
+                    y = my + (mode->height - windowHeight) / 2;
+                    glfwSetWindowPos(window, x, y);
+                }
+            }
+        }
     }
     
     // Set size (if not maximized)
     if (!settings.maximized && settings.width != -1 && settings.height != -1) {
         glfwSetWindowSize(window, settings.width, settings.height);
+        // After resize, validate position again
+        constrainWindowToScreen(window);
     }
     
     // Set maximized state
@@ -995,6 +1094,9 @@ void Application::applyWindowSettings(const WindowSettings& settings, GLFWwindow
     if (settings.focused) {
         glfwFocusWindow(window);
     }
+    
+    // Final validation: ensure window is on screen
+    constrainWindowToScreen(window);
 }
 
 WindowSettings Application::getWindowSettings(GLFWwindow* window) const {
@@ -1052,7 +1154,7 @@ WindowSettings Application::getWindowSettings(GLFWwindow* window) const {
                     if (name) {
                         settings.monitorName = name;
                     }
-                    break;
+            break;
                 }
             }
         }
@@ -1065,6 +1167,143 @@ WindowSettings Application::getWindowSettings(GLFWwindow* window) const {
     settings.focused = (glfwGetWindowAttrib(window, GLFW_FOCUSED) == GLFW_TRUE);
     
     return settings;
+}
+
+bool Application::validateWindowPosition(int& x, int& y, int width, int height) const {
+    // Get all monitors
+    int monitorCount;
+    GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+    if (monitorCount == 0) return false;
+    
+    // Estimate title bar height (varies by OS, typically 20-40 pixels)
+    const int titleBarHeight = 40;  // Conservative estimate for all platforms
+    
+    // Check if window is at least partially visible on any monitor
+    for (int i = 0; i < monitorCount; ++i) {
+        int mx, my;
+        glfwGetMonitorPos(monitors[i], &mx, &my);
+        const GLFWvidmode* mode = glfwGetVideoMode(monitors[i]);
+        if (mode) {
+            // Check if window overlaps with this monitor
+            // Window position (x, y) is top-left corner including title bar
+            if (x + width > mx && x < mx + mode->width &&
+                y + height > my && y < my + mode->height) {
+                // Window is visible on this monitor, validate position
+                // Ensure at least part of window (including title bar) is visible
+                if (x + width <= mx) return false;  // Completely to the left
+                if (x >= mx + mode->width) return false;  // Completely to the right
+                if (y + height <= my) return false;  // Completely above
+                if (y >= my + mode->height) return false;  // Completely below
+                
+                // Clamp to monitor bounds, ensuring title bar is visible
+                if (x < mx) x = mx;
+                if (y < my) y = my;  // Ensure title bar is at least partially visible
+                if (x + width > mx + mode->width) x = mx + mode->width - width;
+                if (y + height > my + mode->height) y = my + mode->height - height;
+                
+                // Additional check: ensure title bar area is visible
+                // Title bar should be at least partially visible (at least 10 pixels)
+                const int minTitleBarVisible = 10;
+                if (y + titleBarHeight < my + minTitleBarVisible) {
+                    y = my;  // Move window so title bar is visible
+                }
+                
+                return true;
+            }
+        }
+    }
+    
+    return false;  // Window is not visible on any monitor
+}
+
+void Application::constrainWindowToScreen(GLFWwindow* window) const {
+    if (!window) return;
+    
+    int x, y, width, height;
+    glfwGetWindowPos(window, &x, &y);
+    glfwGetWindowSize(window, &width, &height);
+    
+    int originalX = x;
+    int originalY = y;
+    
+    // Get all monitors to find which one the window is on
+    int monitorCount;
+    GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+    if (monitorCount == 0) return;
+    
+    const int titleBarHeight = 40;  // Conservative estimate
+    
+    // Find which monitor contains the window center
+    int centerX = x + width / 2;
+    int centerY = y + height / 2;
+    
+    GLFWmonitor* targetMonitor = nullptr;
+    int mx = 0, my = 0, mw = 0, mh = 0;
+    
+    for (int i = 0; i < monitorCount; ++i) {
+        int monitorX, monitorY;
+        glfwGetMonitorPos(monitors[i], &monitorX, &monitorY);
+        const GLFWvidmode* mode = glfwGetVideoMode(monitors[i]);
+        if (mode) {
+            if (centerX >= monitorX && centerX < monitorX + mode->width &&
+                centerY >= monitorY && centerY < monitorY + mode->height) {
+                targetMonitor = monitors[i];
+                mx = monitorX;
+                my = monitorY;
+                mw = mode->width;
+                mh = mode->height;
+                break;
+            }
+        }
+    }
+    
+    // If window center is not on any monitor, use primary monitor
+    if (!targetMonitor) {
+        targetMonitor = glfwGetPrimaryMonitor();
+        if (targetMonitor) {
+            glfwGetMonitorPos(targetMonitor, &mx, &my);
+            const GLFWvidmode* mode = glfwGetVideoMode(targetMonitor);
+            if (mode) {
+                mw = mode->width;
+                mh = mode->height;
+            }
+        }
+    }
+    
+    // Clamp window position to monitor bounds, ensuring title bar is visible
+    bool positionChanged = false;
+    
+    // Clamp horizontally
+    if (x < mx) {
+        x = mx;
+        positionChanged = true;
+    }
+    if (x + width > mx + mw) {
+        x = mx + mw - width;
+        if (x < mx) x = mx;  // If window is too wide, at least align left
+        positionChanged = true;
+    }
+    
+    // Clamp vertically - ensure title bar is always visible
+    if (y < my) {
+        y = my;  // Title bar starts at monitor top
+        positionChanged = true;
+    }
+    if (y + height > my + mh) {
+        y = my + mh - height;
+        positionChanged = true;
+    }
+    
+    // Additional check: ensure at least part of title bar is visible
+    if (y + titleBarHeight < my) {
+        y = my;  // Move so title bar is at monitor top
+        positionChanged = true;
+    }
+    
+    // Apply corrected position if changed
+    if (positionChanged && (x != originalX || y != originalY)) {
+        glfwSetWindowPos(window, x, y);
+    }
 }
 
 } // namespace CADCore

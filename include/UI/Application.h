@@ -129,6 +129,10 @@ private:
     WindowSettings loadWindowSettings(const std::string& windowName) const;
     void applyWindowSettings(const WindowSettings& settings, GLFWwindow* window);
     WindowSettings getWindowSettings(GLFWwindow* window) const;
+    
+    // Window position validation
+    bool validateWindowPosition(int& x, int& y, int width, int height) const;
+    void constrainWindowToScreen(GLFWwindow* window) const;
 };
 
 } // namespace CADCore
