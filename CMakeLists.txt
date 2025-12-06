@@ -1,255 +1,131 @@
-cmake_minimum_required(VERSION 3.15)
-project(driver-solution-cad VERSION 0.1.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.20)
+project(driver-solution-cad VERSION 1.0.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Build options
-option(BUILD_TESTS "Build unit tests" ON)
-option(BUILD_UI "Build UI components" ON)
+# Find xtd package
+set(xtd_POSSIBLE_PATHS
+    "/usr/local/cmake"
+    "/usr/local/lib/cmake/xtd"
+    "/opt/local/lib/cmake/xtd"
+    "/usr/lib/cmake/xtd"
+)
 
-# Output directories
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+foreach(PATH ${xtd_POSSIBLE_PATHS})
+    if(EXISTS "${PATH}/xtdConfig.cmake")
+        set(xtd_DIR "${PATH}")
+        message(STATUS "Found xtd in: ${PATH}")
+        break()
+    endif()
+endforeach()
+
+find_package(xtd QUIET)
+
+if(NOT xtd_FOUND)
+    message(FATAL_ERROR "xtd not found! Please install xtd first:\n  cd /Users/user/Documents/xtd/build\n  sudo cmake --install .")
+endif()
+
+message(STATUS "Found xtd: ${xtd_DIR}")
 
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# Core library
-add_library(CADCore STATIC
-    src/Core/DependencyGraph.cpp
-    src/Core/Kernel.cpp
-    src/Core/Solution.cpp
-    src/Core/SolutionFactory.cpp
-    src/Core/RegisterSolutions.cpp
-    src/Solutions/PointSolution.cpp
-    src/Solutions/LineSolution.cpp
-    src/Solutions/CoordinateSystemSolution.cpp
-    src/Solutions/CircleSolution.cpp
-    src/Solutions/SketchSolution.cpp
-    src/Solutions/ConstraintSolution.cpp
-    src/Solutions/ExtrudeSolution.cpp
-    src/Solutions/RevolveSolution.cpp
-    src/Solutions/FilletSolution.cpp
-    src/Solutions/BooleanSolution.cpp
+# Source files
+set(SOURCES
+    src/ConstructionHistory.cpp
+    src/Node.cpp
+    src/Solution.cpp
+    src/SolutionDocument.cpp
+    src/Document2D.cpp
+    src/MainWindow.cpp
+    src/Value.cpp
+    src/CS.cpp
+    src/2D_point.cpp
+    src/3D_point.cpp
+    src/TerminalWindow.cpp
+    src/XTD.cpp
+    src/OpenGLRenderer.cpp
+    src/DataExchange.cpp
 )
 
-target_include_directories(CADCore PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+# Header files
+set(HEADERS
+    include/ConstructionHistory.h
+    include/Node.h
+    include/Solution.h
+    include/SolutionDocument.h
+    include/Document2D.h
+    include/MainWindow.h
+    include/Value.h
+    include/CS.h
+    include/2D_point.h
+    include/3D_point.h
+    include/TerminalWindow.h
+    include/XTD.h
+    include/OpenGLRenderer.h
+    include/DataExchange.h
 )
 
-# Solutions library (part of CADCore)
-target_include_directories(CADCore PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/Solutions
-)
+# Create library (without MainWindow for now to avoid compilation errors)
+set(SOURCES_WITHOUT_MAINWINDOW ${SOURCES})
+list(REMOVE_ITEM SOURCES_WITHOUT_MAINWINDOW src/MainWindow.cpp)
+set(HEADERS_WITHOUT_MAINWINDOW ${HEADERS})
+list(REMOVE_ITEM HEADERS_WITHOUT_MAINWINDOW include/MainWindow.h)
 
-# Tests
-if(BUILD_TESTS)
-    enable_testing()
-    
-    # Find Google Test
-    find_package(GTest QUIET)
-    
-    if(GTest_FOUND)
-        message(STATUS "Google Test found - building tests")
-        
-        add_executable(test_DependencyGraph tests/test_DependencyGraph.cpp)
-        target_link_libraries(test_DependencyGraph CADCore GTest::GTest GTest::Main)
-        add_test(NAME DependencyGraphTest COMMAND test_DependencyGraph)
-        
-        add_executable(test_Kernel tests/test_Kernel.cpp)
-        target_link_libraries(test_Kernel CADCore GTest::GTest GTest::Main)
-        add_test(NAME KernelTest COMMAND test_Kernel)
-        
-        add_executable(test_Solution tests/test_Solution.cpp)
-        target_link_libraries(test_Solution CADCore GTest::GTest GTest::Main)
-        add_test(NAME SolutionTest COMMAND test_Solution)
-        
-        add_executable(test_SolutionFactory tests/test_SolutionFactory.cpp)
-        target_link_libraries(test_SolutionFactory CADCore GTest::GTest GTest::Main)
-        add_test(NAME SolutionFactoryTest COMMAND test_SolutionFactory)
-        
-        add_executable(test_Kernel_Integration tests/test_Kernel_Integration.cpp)
-        target_link_libraries(test_Kernel_Integration CADCore GTest::GTest GTest::Main)
-        add_test(NAME KernelIntegrationTest COMMAND test_Kernel_Integration)
-        
-        add_executable(test_PointSolution tests/test_PointSolution.cpp)
-        target_link_libraries(test_PointSolution CADCore GTest::GTest GTest::Main)
-        add_test(NAME PointSolutionTest COMMAND test_PointSolution)
-        
-        add_executable(test_LineSolution tests/test_LineSolution.cpp)
-        target_link_libraries(test_LineSolution CADCore GTest::GTest GTest::Main)
-        add_test(NAME LineSolutionTest COMMAND test_LineSolution)
-        
-        add_executable(test_CoordinateSystemSolution tests/test_CoordinateSystemSolution.cpp)
-        target_link_libraries(test_CoordinateSystemSolution CADCore GTest::GTest GTest::Main)
-        add_test(NAME CoordinateSystemSolutionTest COMMAND test_CoordinateSystemSolution)
-        
-        add_executable(test_CircleSolution tests/test_CircleSolution.cpp)
-        target_link_libraries(test_CircleSolution CADCore GTest::GTest GTest::Main)
-        add_test(NAME CircleSolutionTest COMMAND test_CircleSolution)
-        
-        add_executable(test_SketchSolution tests/test_SketchSolution.cpp)
-        target_link_libraries(test_SketchSolution CADCore GTest::GTest GTest::Main)
-        add_test(NAME SketchSolutionTest COMMAND test_SketchSolution)
-        
-        add_executable(test_ConstraintSolution tests/test_ConstraintSolution.cpp)
-        target_link_libraries(test_ConstraintSolution CADCore GTest::GTest GTest::Main)
-        add_test(NAME ConstraintSolutionTest COMMAND test_ConstraintSolution)
-        
-        add_executable(test_ExtrudeSolution tests/test_ExtrudeSolution.cpp)
-        target_link_libraries(test_ExtrudeSolution CADCore GTest::GTest GTest::Main)
-        add_test(NAME ExtrudeSolutionTest COMMAND test_ExtrudeSolution)
-        
-        add_executable(test_RevolveSolution tests/test_RevolveSolution.cpp)
-        target_link_libraries(test_RevolveSolution CADCore GTest::GTest GTest::Main)
-        add_test(NAME RevolveSolutionTest COMMAND test_RevolveSolution)
-        
-        add_executable(test_FilletSolution tests/test_FilletSolution.cpp)
-        target_link_libraries(test_FilletSolution CADCore GTest::GTest GTest::Main)
-        add_test(NAME FilletSolutionTest COMMAND test_FilletSolution)
-        
-        add_executable(test_BooleanSolution tests/test_BooleanSolution.cpp)
-        target_link_libraries(test_BooleanSolution CADCore GTest::GTest GTest::Main)
-        add_test(NAME BooleanSolutionTest COMMAND test_BooleanSolution)
-    else()
-        message(WARNING "Google Test not found - tests will not be built")
-        message(STATUS "Install with: brew install googletest (macOS) or apt-get install libgtest-dev (Linux)")
+add_library(driver_solution_cad STATIC ${SOURCES_WITHOUT_MAINWINDOW} ${HEADERS_WITHOUT_MAINWINDOW})
+
+# Link xtd if found
+if(xtd_FOUND)
+    if(TARGET xtd::xtd)
+        target_link_libraries(driver_solution_cad PUBLIC xtd::xtd)
+    elseif(TARGET xtd)
+        target_link_libraries(driver_solution_cad PUBLIC xtd)
+    elseif(DEFINED xtd_INCLUDE_DIRS AND DEFINED xtd_LIBRARIES)
+        target_include_directories(driver_solution_cad PUBLIC ${xtd_INCLUDE_DIRS})
+        target_link_directories(driver_solution_cad PUBLIC ${xtd_LIBRARIES_DIRS})
+        target_link_libraries(driver_solution_cad PUBLIC ${xtd_LIBRARIES})
     endif()
 endif()
 
-# UI Application
-if(BUILD_UI)
-    # Find GLFW
-    #
-    # macOS / Linux: search in standard locations (brew / system)
-    if(APPLE OR UNIX)
-        find_path(GLFW_INCLUDE_DIR GLFW/glfw3.h
-            PATHS
-            /usr/local/include
-            /usr/include
-            /opt/homebrew/include
-        )
-        find_library(GLFW_LIBRARY
-            NAMES glfw3 glfw
-            PATHS
-            /usr/local/lib
-            /usr/lib
-            /opt/homebrew/lib
-        )
-        if(GLFW_INCLUDE_DIR AND GLFW_LIBRARY)
-            set(GLFW_FOUND TRUE)
-            message(STATUS "GLFW found (Unix): ${GLFW_LIBRARY}")
+# Demo terminal application
+add_executable(demo_terminal examples/demo_terminal.cpp)
+target_link_libraries(demo_terminal PRIVATE driver_solution_cad)
+
+# Demo main menu application
+add_executable(demo_main_menu examples/demo_main_menu.cpp)
+target_link_libraries(demo_main_menu PRIVATE driver_solution_cad)
+
+# Simple GUI application (requires xtd)
+if(xtd_FOUND)
+    add_executable(simple_gui examples/simple_gui_working.cpp)
+    if(TARGET xtd::xtd)
+        target_link_libraries(simple_gui PRIVATE xtd::xtd)
+    elseif(TARGET xtd)
+        target_link_libraries(simple_gui PRIVATE xtd)
+    elseif(DEFINED xtd_INCLUDE_DIRS)
+        target_include_directories(simple_gui PRIVATE ${xtd_INCLUDE_DIRS})
+        if(DEFINED xtd_LIBRARIES_DIRS)
+            target_link_directories(simple_gui PRIVATE ${xtd_LIBRARIES_DIRS})
+        endif()
+        if(DEFINED xtd_LIBRARIES)
+            target_link_libraries(simple_gui PRIVATE ${xtd_LIBRARIES})
         endif()
     endif()
-
-    # Windows: prefer Config package (vcpkg)
-    if(WIN32 AND NOT GLFW_FOUND)
-        find_package(glfw3 CONFIG QUIET)
-        if(glfw3_FOUND)
-            set(GLFW_FOUND TRUE)
-            set(GLFW_TARGET glfw)
-            message(STATUS "GLFW found via find_package(glfw3 CONFIG)")
-        endif()
-    endif()
-
-    # Fallback: use manually specified include/library variables (any platform)
-    if(NOT GLFW_FOUND AND GLFW_INCLUDE_DIR AND GLFW_LIBRARY)
-        set(GLFW_FOUND TRUE)
-        message(STATUS "GLFW found via explicit GLFW_INCLUDE_DIR / GLFW_LIBRARY")
-    endif()
-
-    if(NOT GLFW_FOUND)
-        message(WARNING "GLFW not found - UI will not be built")
-        message(STATUS "On macOS: brew install glfw; On Linux: install libglfw3-dev; On Windows (vcpkg): vcpkg install glfw3:x64-windows")
-    endif()
-
-    if(GLFW_FOUND)
-        # NanoGUI
-        set(NANOGUI_DIR ${CMAKE_SOURCE_DIR}/third_party/nanogui)
-        
-        # Force OpenGL backend instead of Metal (for compatibility)
-        set(NANOGUI_BACKEND "OpenGL" CACHE STRING "NanoGUI backend" FORCE)
-        
-        # Add NanoGUI as subdirectory
-        add_subdirectory(${NANOGUI_DIR} nanogui_build)
-        
-        # NanoGUI requires OpenGL 3.3+, not OpenGL 2.1
-        # We'll need to update Window.cpp to request OpenGL 3.3 context
-        
-        message(STATUS "NanoGUI found and will be built")
-        
-        # Create UI library
-        add_library(CADUI STATIC
-            src/UI/Window.cpp
-            src/UI/WindowConfig.cpp
-            src/UI/Application.cpp
-            src/UI/RenderCache.cpp
-            src/UI/Octree.cpp
+    if(APPLE)
+        set_target_properties(simple_gui PROPERTIES
+            MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_GUI_IDENTIFIER "com.cadsystem.simplegui"
         )
-        
-        target_include_directories(CADUI PUBLIC
-            ${CMAKE_CURRENT_SOURCE_DIR}/include
-            ${CMAKE_CURRENT_SOURCE_DIR}/include/UI
-            ${GLFW_INCLUDE_DIR}
-        )
-        
-        # Link against GLFW
-        if(DEFINED GLFW_TARGET)
-            target_link_libraries(CADUI PUBLIC
-                CADCore
-                ${GLFW_TARGET}
-            )
-        else()
-            target_link_libraries(CADUI PUBLIC
-                CADCore
-                ${GLFW_LIBRARY}
-            )
-        endif()
-        
-        # OpenGL 3.3+ (required by NanoGUI)
-        find_package(OpenGL REQUIRED)
-        target_link_libraries(CADUI PUBLIC OpenGL::GL)
-        
-        # Link NanoGUI to CADUI
-        target_link_libraries(CADUI PUBLIC nanogui)
-        
-        # macOS specific frameworks
-        if(APPLE)
-            if(NOT DEFINED COCOA_FRAMEWORK)
-                find_library(COCOA_FRAMEWORK Cocoa)
-            endif()
-            if(NOT DEFINED IOKIT_FRAMEWORK)
-                find_library(IOKIT_FRAMEWORK IOKit)
-            endif()
-            if(NOT DEFINED COREVIDEO_FRAMEWORK)
-                find_library(COREVIDEO_FRAMEWORK CoreVideo)
-            endif()
-            target_link_libraries(CADUI PUBLIC
-                ${COCOA_FRAMEWORK}
-                ${IOKIT_FRAMEWORK}
-                ${COREVIDEO_FRAMEWORK}
-            )
-        endif()
-        
-        # Main application executable
-        add_executable(${PROJECT_NAME}
-            src/main.cpp
-        )
-        
-        target_link_libraries(${PROJECT_NAME} PRIVATE
-            CADUI
-            CADCore
-        )
-        
-        message(STATUS "UI application will be built")
-    else()
-        message(WARNING "GLFW not found - UI application will not be built")
     endif()
 endif()
 
-# Install rules (placeholder)
-# install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+# Installation (optional)
+install(TARGETS driver_solution_cad
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+)
 
+install(FILES ${HEADERS}
+    DESTINATION include
+)

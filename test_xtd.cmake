@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.20)
+project(test)
+set(xtd_DIR "/usr/local/cmake")
+find_package(xtd REQUIRED)
+message(STATUS "xtd_FOUND: ${xtd_FOUND}")
+message(STATUS "xtd_INCLUDE_DIRS: ${xtd_INCLUDE_DIRS}")

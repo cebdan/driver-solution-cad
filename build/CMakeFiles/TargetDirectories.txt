@@ -1,0 +1,11 @@
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/driver_solution_cad.dir
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/demo_terminal.dir
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/demo_main_menu.dir
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/simple_gui.dir
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/test.dir
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/edit_cache.dir
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/rebuild_cache.dir
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/list_install_components.dir
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/install.dir
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/install/local.dir
+/Users/user/Documents/driver-solution-cad/build/CMakeFiles/install/strip.dir

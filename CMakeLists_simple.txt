@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.15)
+project(driver-solution-cad VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Console terminal demo (no dependencies)
+add_executable(console_terminal examples/console_terminal.cpp)
+target_compile_features(console_terminal PRIVATE cxx_std_17)
+
