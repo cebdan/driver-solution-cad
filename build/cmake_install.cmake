@@ -52,7 +52,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
     "/Users/user/Documents/driver-solution-cad/include/Solution.h"
     "/Users/user/Documents/driver-solution-cad/include/SolutionDocument.h"
     "/Users/user/Documents/driver-solution-cad/include/Document2D.h"
-    "/Users/user/Documents/driver-solution-cad/include/MainWindow.h"
+    "/Users/user/Documents/driver-solution-cad/include/StartWindow.h"
     "/Users/user/Documents/driver-solution-cad/include/Value.h"
     "/Users/user/Documents/driver-solution-cad/include/CS.h"
     "/Users/user/Documents/driver-solution-cad/include/2D_point.h"
@@ -61,6 +61,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
     "/Users/user/Documents/driver-solution-cad/include/XTD.h"
     "/Users/user/Documents/driver-solution-cad/include/OpenGLRenderer.h"
     "/Users/user/Documents/driver-solution-cad/include/DataExchange.h"
+    "/Users/user/Documents/driver-solution-cad/include/close_app.h"
     )
 endif()
 

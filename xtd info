@@ -1,0 +1,1121 @@
+# XTD Framework - Полное Руководство для Чайников
+
+## Установка и Настройка
+
+### Шаг 1: Установка XTD
+
+**Linux/macOS:**
+```bash
+# Клонируем репозиторий
+git clone https://github.com/gammasoft71/xtd
+cd xtd
+
+# Собираем
+mkdir build && cd build
+cmake ..
+cmake --build . --config Release
+
+# Устанавливаем
+sudo cmake --install .
+```
+
+**Windows:**
+```bash
+# То же самое, но без sudo
+git clone https://github.com/gammasoft71/xtd
+cd xtd
+mkdir build
+cd build
+cmake ..
+cmake --build . --config Release
+cmake --install .
+```
+
+### Шаг 2: Создание Проекта
+
+**Структура проекта:**
+```
+my_project/
+├── CMakeLists.txt
+└── main.cpp
+```
+
+**CMakeLists.txt:**
+```cmake
+cmake_minimum_required(VERSION 3.20)
+project(my_app)
+
+# Ищем XTD
+find_package(xtd REQUIRED)
+
+# Создаём программу
+add_executable(my_app main.cpp)
+
+# Линкуем с XTD
+target_link_libraries(my_app xtd)
+```
+
+**Сборка:**
+```bash
+mkdir build && cd build
+cmake ..
+cmake --build .
+./my_app  # Linux/macOS
+my_app.exe  # Windows
+```
+
+---
+
+## Часть 1: ОСНОВЫ - Создание Окон
+
+### Пример 1: Самое Простое Окно
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  // Создаём окно
+  auto my_window = form::create("My First Window");
+  
+  // Запускаем приложение
+  application::run(my_window);
+}
+```
+
+**Что происходит:**
+1. `form::create()` - создаёт окно с заголовком "My First Window"
+2. `application::run()` - показывает окно и ждёт, пока его закроют
+3. Программа завершается когда закрываешь окно
+
+### Пример 2: Настройка Размера и Позиции
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd;
+using namespace xtd::forms;
+using namespace xtd::drawing;
+
+int main() {
+  auto my_window = form::create();
+  
+  // Заголовок окна
+  my_window.text("Настроенное Окно");
+  
+  // Размер окна (ширина, высота)
+  my_window.size({800, 600});
+  
+  // Позиция на экране (x, y)
+  my_window.location({100, 100});
+  
+  // Цвет фона
+  my_window.back_color(color::light_blue);
+  
+  application::run(my_window);
+}
+```
+
+### Пример 3: Окно по Центру Экрана
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto my_window = form::create();
+  my_window.text("Окно по Центру");
+  my_window.size({600, 400});
+  
+  // МАГИЯ: окно появится по центру экрана
+  my_window.start_position(form_start_position::center_screen);
+  
+  application::run(my_window);
+}
+```
+
+**Варианты start_position:**
+- `manual` - где ты указал в location()
+- `center_screen` - центр экрана
+- `center_parent` - центр родительского окна
+- `windows_default_location` - где Windows решит
+
+---
+
+## Часть 2: SHOW vs SHOW_DIALOG - В ЧЁМ РАЗНИЦА?
+
+### КРИТИЧЕСКИ ВАЖНО ПОНЯТЬ!
+```cpp
+form.show();         // Окно открывается, код ПРОДОЛЖАЕТ работать
+form.show_dialog();  // Окно открывается, код ОСТАНАВЛИВАЕТСЯ и ЖДЁТ
+```
+
+### Пример 4: show() - Неблокирующее Окно
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto main_window = form::create("Главное Окно");
+  main_window.size({400, 300});
+  
+  // Кнопка
+  auto button = button::create(main_window, "Открыть второе окно", {10, 10});
+  
+  button.click += [&] {
+    auto second_window = form::create("Второе Окно");
+    second_window.size({300, 200});
+    
+    // ВНИМАНИЕ: show() НЕ БЛОКИРУЕТ!
+    second_window.show();
+    
+    // Этот код выполнится СРАЗУ после show()
+    message_box::show("Код продолжает работать!");
+    
+    // Можешь работать с обоими окнами одновременно
+  };
+  
+  application::run(main_window);
+}
+```
+
+**Что видит пользователь:**
+1. Нажимает кнопку
+2. Появляется второе окно
+3. СРАЗУ появляется message_box
+4. Может кликать и в главное, и во второе окно
+
+### Пример 5: show_dialog() - Блокирующее Окно
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto main_window = form::create("Главное Окно");
+  main_window.size({400, 300});
+  
+  auto button = button::create(main_window, "Открыть диалог", {10, 10});
+  
+  button.click += [&] {
+    auto dialog = form::create("Диалог");
+    dialog.size({300, 200});
+    
+    // ВНИМАНИЕ: show_dialog() БЛОКИРУЕТ!
+    dialog.show_dialog();
+    
+    // Этот код выполнится ТОЛЬКО когда закроешь диалог
+    message_box::show("Диалог закрыт, код продолжается");
+  };
+  
+  application::run(main_window);
+}
+```
+
+**Что видит пользователь:**
+1. Нажимает кнопку
+2. Появляется диалог
+3. НЕ МОЖЕТ кликнуть главное окно (заблокировано!)
+4. Закрывает диалог
+5. ТОЛЬКО ТОГДА появляется message_box
+
+### Пример 6: Диалог с Результатом (Правильный Паттерн)
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto main_window = form::create("Главное");
+  main_window.size({400, 300});
+  
+  auto label = label::create(main_window, "Результат: нет", {10, 100, 300, 30});
+  auto button = button::create(main_window, "Спросить имя", {10, 10});
+  
+  button.click += [&] {
+    // Создаём диалог
+    auto dialog = form::create("Введи имя");
+    dialog.size({300, 150});
+    
+    // Поле ввода
+    auto textbox = text_box::create(dialog, "", {10, 10, 250, 25});
+    
+    // Кнопка OK
+    auto ok_button = button::create(dialog, "OK", {10, 50, 80, 30});
+    ok_button.click += [&] {
+      dialog.dialog_result(dialog_result::ok);  // Ставим результат
+      dialog.close();  // Закрываем
+    };
+    
+    // Кнопка Cancel
+    auto cancel_button = button::create(dialog, "Cancel", {100, 50, 80, 30});
+    cancel_button.click += [&] {
+      dialog.dialog_result(dialog_result::cancel);
+      dialog.close();
+    };
+    
+    // ПОКАЗЫВАЕМ И ЖДЁМ
+    auto result = dialog.show_dialog();
+    
+    // Код дойдёт сюда ТОЛЬКО после закрытия диалога
+    if (result == dialog_result::ok) {
+      label.text("Привет, " + textbox.text() + "!");
+    } else {
+      label.text("Отменено");
+    }
+  };
+  
+  application::run(main_window);
+}
+```
+
+---
+
+## Часть 3: HIDE vs MINIMIZE vs CLOSE
+
+### Это РАЗНЫЕ вещи! Запомни:
+
+| Действие | Что происходит | Окно в памяти? | В таскбаре? | Можно показать снова? |
+|----------|----------------|----------------|-------------|-----------------------|
+| **hide()** | Прячет окно полностью | ✅ Да | ❌ Нет | ✅ Да, через show() |
+| **minimize** | Сворачивает в таскбар | ✅ Да | ✅ Да | ✅ Да, пользователь кликнет |
+| **close()** | Закрывает и удаляет | ❌ Нет | ❌ Нет | ❌ Нет, создавай новое |
+
+### Пример 7: HIDE - Прячем Окно
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto main_window = form::create("Главное");
+  main_window.size({400, 300});
+  
+  // Создаём второе окно ЗАРАНЕЕ
+  auto second_window = form::create("Дополнительное");
+  second_window.size({300, 200});
+  
+  auto show_btn = button::create(main_window, "Показать", {10, 10, 100, 30});
+  auto hide_btn = button::create(main_window, "Спрятать", {120, 10, 100, 30});
+  
+  show_btn.click += [&] {
+    // Показываем окно (если было спрятано)
+    second_window.show();
+  };
+  
+  hide_btn.click += [&] {
+    // Прячем окно (НЕ удаляем!)
+    second_window.hide();
+    
+    // Окно всё ещё в памяти, можем показать снова
+  };
+  
+  application::run(main_window);
+}
+```
+
+**Использование hide():**
+- Окно настроек (показываешь когда нужно, прячешь после)
+- Панели инструментов
+- Окна, которые часто открываешь/закрываешь
+
+### Пример 8: MINIMIZE - Сворачиваем в Таскбар
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto main_window = form::create("Главное");
+  main_window.size({400, 300});
+  
+  auto minimize_btn = button::create(main_window, "Свернуть", {10, 10});
+  auto maximize_btn = button::create(main_window, "Развернуть", {10, 50});
+  auto normal_btn = button::create(main_window, "Нормальный размер", {10, 90});
+  
+  minimize_btn.click += [&] {
+    // Сворачиваем (как кнопка "_" в заголовке окна)
+    main_window.window_state(form_window_state::minimized);
+  };
+  
+  maximize_btn.click += [&] {
+    // Разворачиваем на весь экран
+    main_window.window_state(form_window_state::maximized);
+  };
+  
+  normal_btn.click += [&] {
+    // Обычный размер
+    main_window.window_state(form_window_state::normal);
+  };
+  
+  application::run(main_window);
+}
+```
+
+### Пример 9: CLOSE - Закрываем Навсегда
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto main_window = form::create("Главное");
+  main_window.size({400, 300});
+  
+  auto button = button::create(main_window, "Открыть окно", {10, 10});
+  
+  button.click += [&] {
+    auto temp_window = form::create("Временное Окно");
+    temp_window.size({300, 200});
+    
+    auto close_btn = button::create(temp_window, "Закрыть себя", {10, 10});
+    
+    close_btn.click += [&] {
+      // Закрываем окно (удаляется из памяти!)
+      temp_window.close();
+      
+      // После этого temp_window НЕЛЬЗЯ использовать!
+      // НЕ делай: temp_window.show(); // ОШИБКА!
+    };
+    
+    temp_window.show();
+  };
+  
+  application::run(main_window);
+}
+```
+
+### Пример 10: Подтверждение Перед Закрытием
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto main_window = form::create("Приложение с Данными");
+  main_window.size({400, 300});
+  
+  bool has_unsaved_data = false;
+  
+  auto textbox = text_box::create(main_window, "", {10, 10, 300, 100});
+  textbox.multiline(true);
+  
+  // Когда что-то вводят - есть несохранённые данные
+  textbox.text_changed += [&] {
+    has_unsaved_data = true;
+  };
+  
+  // ВАЖНО: событие form_closing срабатывает ПЕРЕД закрытием
+  main_window.form_closing += [&](object& sender, form_closing_event_args& e) {
+    if (has_unsaved_data) {
+      auto result = message_box::show(
+        "Есть несохранённые данные! Точно закрыть?",
+        "Внимание",
+        message_box_buttons::yes_no,
+        message_box_icon::warning
+      );
+      
+      if (result == dialog_result::no) {
+        // ОТМЕНЯЕМ закрытие!
+        e.cancel(true);
+      }
+    }
+  };
+  
+  application::run(main_window);
+}
+```
+
+---
+
+## Часть 4: VISIBLE - Показать/Спрятать
+
+### Пример 11: Используем Свойство visible
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto main_window = form::create("Главное");
+  main_window.size({400, 300});
+  
+  auto second_window = form::create("Дополнительное");
+  second_window.size({300, 200});
+  
+  auto toggle_btn = button::create(main_window, "Переключить", {10, 10});
+  
+  toggle_btn.click += [&] {
+    // Проверяем видимо ли окно
+    if (second_window.visible()) {
+      // Если видимо - прячем
+      second_window.visible(false);  // То же что hide()
+    } else {
+      // Если спрятано - показываем
+      second_window.visible(true);   // То же что show()
+    }
+  };
+  
+  application::run(main_window);
+}
+```
+
+**visible() vs hide()/show():**
+```cpp
+// Эти пары ИДЕНТИЧНЫ:
+form.visible(true);   ←→  form.show();
+form.visible(false);  ←→  form.hide();
+```
+
+---
+
+## Часть 5: ENABLED - Включить/Выключить
+
+### Пример 12: Блокируем Окно
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto main_window = form::create("Главное");
+  main_window.size({400, 300});
+  
+  auto lock_btn = button::create(main_window, "Заблокировать окно", {10, 10});
+  auto unlock_btn = button::create(main_window, "Разблокировать окно", {10, 50});
+  
+  lock_btn.click += [&] {
+    // Блокируем окно (нельзя кликать, но видно)
+    main_window.enabled(false);
+    
+    // ПРОБЛЕМА: кнопки тоже заблокированы!
+    // Нужно разблокировать снаружи или таймером
+    
+    auto timer = forms::timer();
+    timer.interval(std::chrono::seconds(3));
+    timer.tick += [&] {
+      main_window.enabled(true);
+      timer.enabled(false);
+    };
+    timer.enabled(true);
+  };
+  
+  unlock_btn.click += [&] {
+    main_window.enabled(true);
+  };
+  
+  application::run(main_window);
+}
+```
+
+**enabled vs visible:**
+```cpp
+form.visible(false);  // Окно НЕВИДИМО
+form.enabled(false);  // Окно ВИДИМО, но заблокировано (серое)
+```
+
+---
+
+## Часть 6: ПРАКТИЧЕСКИЕ ПРИМЕРЫ
+
+### Пример 13: Окно с Системным Треем
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+using namespace xtd::drawing;
+
+int main() {
+  auto main_window = form::create("Приложение");
+  main_window.size({400, 300});
+  
+  // Создаём иконку в трее
+  auto tray = notify_icon();
+  tray.text("Моё Приложение");
+  tray.icon(system_icons::application());
+  tray.visible(true);
+  
+  // Двойной клик по трею - показать окно
+  tray.double_click += [&] {
+    main_window.show();
+    main_window.window_state(form_window_state::normal);
+  };
+  
+  // При закрытии - НЕ закрываем, а прячем в трей
+  main_window.form_closing += [&](object& sender, form_closing_event_args& e) {
+    e.cancel(true);  // Отменяем закрытие
+    main_window.hide();  // Прячем окно
+    
+    // Показываем уведомление
+    tray.show_balloon_tip(
+      "Приложение свёрнуто",
+      "Я в системном трее",
+      notify_icon::balloon_tip_icon::info
+    );
+  };
+  
+  // Контекстное меню в трее
+  auto tray_menu = context_menu();
+  auto show_item = menu_item();
+  show_item.text("Показать");
+  show_item.click += [&] {
+    main_window.show();
+    main_window.window_state(form_window_state::normal);
+  };
+  
+  auto exit_item = menu_item();
+  exit_item.text("Выход");
+  exit_item.click += [&] {
+    tray.visible(false);
+    application::exit();  // Настоящий выход
+  };
+  
+  tray_menu.menu_items().push_back(show_item);
+  tray_menu.menu_items().push_back(exit_item);
+  tray.context_menu(tray_menu);
+  
+  application::run(main_window);
+}
+```
+
+### Пример 14: Мастер с Несколькими Шагами
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd;
+using namespace xtd::forms;
+
+int main() {
+  auto wizard = form::create("Мастер Установки");
+  wizard.size({500, 400});
+  wizard.form_border_style(forms::form_border_style::fixed_dialog);
+  wizard.maximize_box(false);
+  wizard.minimize_box(false);
+  
+  // Три панели для шагов
+  auto step1_panel = panel::create(wizard, {0, 0, 500, 350});
+  auto step2_panel = panel::create(wizard, {0, 0, 500, 350});
+  auto step3_panel = panel::create(wizard, {0, 0, 500, 350});
+  
+  // Контент шага 1
+  label::create(step1_panel, "Шаг 1: Приветствие", {50, 50, 400, 30});
+  
+  // Контент шага 2
+  label::create(step2_panel, "Шаг 2: Настройки", {50, 50, 400, 30});
+  
+  // Контент шага 3
+  label::create(step3_panel, "Шаг 3: Завершение", {50, 50, 400, 30});
+  
+  // Изначально показываем только шаг 1
+  step1_panel.visible(true);
+  step2_panel.visible(false);
+  step3_panel.visible(false);
+  
+  // Кнопки навигации
+  auto back_btn = button::create(wizard, "< Назад", {150, 360, 100, 30});
+  auto next_btn = button::create(wizard, "Далее >", {260, 360, 100, 30});
+  
+  back_btn.enabled(false);  // На первом шаге нельзя назад
+  
+  int current_step = 1;
+  
+  next_btn.click += [&] {
+    if (current_step == 1) {
+      // Переход 1 → 2
+      step1_panel.visible(false);
+      step2_panel.visible(true);
+      current_step = 2;
+      back_btn.enabled(true);
+      
+    } else if (current_step == 2) {
+      // Переход 2 → 3
+      step2_panel.visible(false);
+      step3_panel.visible(true);
+      current_step = 3;
+      next_btn.text("Готово");
+      
+    } else if (current_step == 3) {
+      // Закрываем мастер
+      wizard.close();
+    }
+  };
+  
+  back_btn.click += [&] {
+    if (current_step == 2) {
+      // Переход 2 → 1
+      step2_panel.visible(false);
+      step1_panel.visible(true);
+      current_step = 1;
+      back_btn.enabled(false);
+      
+    } else if (current_step == 3) {
+      // Переход 3 → 2
+      step3_panel.visible(false);
+      step2_panel.visible(true);
+      current_step = 2;
+      next_btn.text("Далее >");
+    }
+  };
+  
+  application::run(wizard);
+}
+```
+
+### Пример 15: Splash Screen при Загрузке
+```cpp
+#include <xtd/xtd>
+#include <thread>
+
+using namespace xtd;
+using namespace xtd::forms;
+using namespace xtd::drawing;
+
+int main() {
+  // Создаём splash screen
+  auto splash = form::create();
+  splash.text("");
+  splash.size({400, 200});
+  splash.start_position(form_start_position::center_screen);
+  splash.form_border_style(forms::form_border_style::none);
+  splash.back_color(color::dark_blue);
+  
+  auto splash_label = label::create(splash, "Загрузка приложения...", {0, 80, 400, 40});
+  splash_label.fore_color(color::white);
+  splash_label.font(drawing::font("Arial", 16, font_style::bold));
+  splash_label.text_align(content_alignment::middle_center);
+  
+  // Показываем splash БЕЗ блокировки
+  splash.show();
+  
+  // Обрабатываем события (чтобы splash отрисовался)
+  application::do_events();
+  
+  // Имитируем загрузку
+  std::this_thread::sleep_for(std::chrono::seconds(3));
+  
+  // Закрываем splash
+  splash.close();
+  
+  // Показываем главное окно
+  auto main_window = form::create("Главное Окно");
+  main_window.size({600, 400});
+  
+  application::run(main_window);
+}
+```
+
+---
+
+## Часть 7: ВАЖНЫЕ СВОЙСТВА ОКОН
+
+### Пример 16: Настройка Границ и Кнопок
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto window = form::create("Настройка Окна");
+  window.size({400, 300});
+  
+  // ГРАНИЦА ОКНА
+  // none - без рамки
+  // fixed_single - фиксированный размер, тонкая рамка
+  // fixed_3d - фиксированный размер, 3D рамка
+  // fixed_dialog - как диалог
+  // sizable - можно изменять размер (по умолчанию)
+  // fixed_tool_window - маленькая панель инструментов
+  // sizable_tool_window - панель инструментов с изменяемым размером
+  
+  window.form_border_style(form_border_style::fixed_dialog);
+  
+  // КНОПКИ В ЗАГОЛОВКЕ
+  window.minimize_box(true);   // Кнопка свернуть
+  window.maximize_box(false);  // Без кнопки развернуть
+  window.control_box(true);    // Кнопка закрыть и иконка
+  
+  // ПОВЕДЕНИЕ
+  window.top_most(false);      // Поверх всех окон (false = нет)
+  window.show_in_taskbar(true); // Показывать в таскбаре
+  
+  // ПРОЗРАЧНОСТЬ (0.0 = невидимо, 1.0 = непрозрачно)
+  window.opacity(1.0);
+  
+  application::run(window);
+}
+```
+
+### Пример 17: Окно Без Рамки (Custom UI)
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd;
+using namespace xtd::forms;
+using namespace xtd::drawing;
+
+int main() {
+  auto window = form::create();
+  window.size({400, 300});
+  window.start_position(form_start_position::center_screen);
+  
+  // Убираем всю стандартную рамку
+  window.form_border_style(form_border_style::none);
+  window.back_color(color::dark_gray);
+  
+  // Создаём свой заголовок
+  auto title_bar = panel::create(window, {0, 0, 400, 40});
+  title_bar.back_color(color::black);
+  
+  auto title_label = label::create(title_bar, "Кастомное Окно", {10, 10, 300, 20});
+  title_label.fore_color(color::white);
+  
+  // Своя кнопка закрытия
+  auto close_btn = button::create(title_bar, "X", {360, 5, 30, 30});
+  close_btn.back_color(color::red);
+  close_btn.fore_color(color::white);
+  close_btn.click += [&] {
+    window.close();
+  };
+  
+  // ВАЖНО: делаем окно перетаскиваемым
+  bool dragging = false;
+  point drag_start;
+  
+  title_bar.mouse_down += [&](object& sender, const mouse_event_args& e) {
+    dragging = true;
+    drag_start = e.location();
+  };
+  
+  title_bar.mouse_move += [&](object& sender, const mouse_event_args& e) {
+    if (dragging) {
+      point current_screen_pos = title_bar.point_to_screen(e.location());
+      window.location(point(
+        current_screen_pos.x() - drag_start.x(),
+        current_screen_pos.y() - drag_start.y()
+      ));
+    }
+  };
+  
+  title_bar.mouse_up += [&](object& sender, const mouse_event_args& e) {
+    dragging = false;
+  };
+  
+  application::run(window);
+}
+```
+
+---
+
+## Часть 8: СОБЫТИЯ - Жизненный Цикл Окна
+
+### Все Важные События
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto window = form::create("События Окна");
+  window.size({400, 300});
+  
+  // 1. LOAD - окно создано, но ещё не показано
+  window.load += [](object& sender, const event_args& e) {
+    message_box::show("Событие LOAD: окно загружено");
+  };
+  
+  // 2. SHOWN - окно показано первый раз
+  window.shown += [](object& sender, const event_args& e) {
+    message_box::show("Событие SHOWN: окно показано");
+  };
+  
+  // 3. ACTIVATED - окно получило фокус
+  window.activated += [](object& sender, const event_args& e) {
+    // Не показываем message_box, он замучает
+    // message_box::show("Окно активно");
+  };
+  
+  // 4. DEACTIVATE - окно потеряло фокус
+  window.deactivate += [](object& sender, const event_args& e) {
+    // message_box::show("Окно неактивно");
+  };
+  
+  // 5. FORM_CLOSING - окно закрывается (МОЖНО ОТМЕНИТЬ!)
+  window.form_closing += [](object& sender, form_closing_event_args& e) {
+    auto result = message_box::show(
+      "Точно закрыть?",
+      "Подтверждение",
+      message_box_buttons::yes_no
+    );
+    
+    if (result == dialog_result::no) {
+      e.cancel(true);  // Отменяем закрытие
+    }
+  };
+  
+  // 6. FORM_CLOSED - окно закрыто (ОТМЕНИТЬ НЕЛЬЗЯ!)
+  window.form_closed += [](object& sender, const event_args& e) {
+    // Здесь делаем финальную очистку
+    // message_box НЕ показывай - окно уже закрыто
+  };
+  
+  application::run(window);
+}
+```
+
+### Порядок Событий
+```
+Программа запускается
+        ↓
+window.load         ← Окно загружено
+        ↓
+window.shown        ← Окно показано
+        ↓
+window.activated    ← Окно активно
+        ↓
+   (работаем)
+        ↓
+Пользователь нажал X
+        ↓
+window.form_closing ← Можем отменить: e.cancel(true)
+        ↓
+   Закрываем?
+   YES ↓       NO → возврат к работе
+window.form_closed  ← Уже закрыто
+        ↓
+    Программа завершается
+```
+
+---
+
+## Часть 9: РАБОТА С НЕСКОЛЬКИМИ ОКНАМИ
+
+### Пример 18: Владелец Окна (Owner)
+```cpp
+#include <xtd/xtd>
+
+using namespace xtd::forms;
+
+int main() {
+  auto main_window = form::create("Главное Окно");
+  main_window.size({400, 300});
+  
+  auto button = button::create(main_window, "Открыть дочернее", {10, 10});
+  
+  button.click += [&] {
+    auto child_window = form::create("Дочернее Окно");
+    child_window.size({300, 200});
+    
+    // ВАЖНО: устанавливаем владельца
+    child_window.owner(main_window);
+    
+    // Теперь:
+    // - child_window всегда поверх main_window
+    // - если минимизируешь main_window, child_window тоже минимизируется
+    // - если закроешь main_window, child_window тоже закроется
+    
+    child_window.show();
+  };
+  
+  application::run(main_window);
+}
+```
+
+### Пример 19: Управление Группой Окон
+```cpp
+#include <xtd/xtd>
+#include <vector>
+
+using namespace xtd::forms;
+
+class multi_window_app {
+private:
+  form main_window;
+  std::vector<form> child_windows;
+  
+public:
+  multi_window_app() {
+    main_window = form::create("Менеджер Окон");
+    main_window.size({400, 300});
+    
+    auto create_btn = button::create(main_window, "Создать окно", {10, 10});
+    auto show_all_btn = button::create(main_window, "Показать все", {10, 50});
+    auto hide_all_btn = button::create(main_window, "Спрятать все", {10, 90});
+    auto close_all_btn = button::create(main_window, "Закрыть все", {10, 130});
+    
+    create_btn.click += [this] {
+      auto child = form::create("Окно " + std::to_string(child_windows.size() + 1));
+      child.size({300, 200});
+      child.owner(main_window);
+      child_windows.push_back(child);
+      child.show();
+    };
+    
+    show_all_btn.click += [this] {
+      for (auto& child : child_windows) {
+        child.show();
+      }
+    };
+    
+    hide_all_btn.click += [this] {
+      for (auto& child : child_windows) {
+        child.hide();
+      }
+    };
+    
+    close_all_btn.click += [this] {
+      for (auto& child : child_windows) {
+        child.close();
+      }
+      child_windows.clear();
+    };
+  }
+  
+  void run() {
+    application::run(main_window);
+  }
+};
+
+int main() {
+  multi_window_app app;
+  app.run();
+}
+```
+
+---
+
+## Часть 10: ШПАРГАЛКА - Быстрый Справочник
+
+### Создание Окна
+```cpp
+auto window = form::create();                    // Пустое окно
+auto window = form::create("Title");             // С заголовком
+auto window = form::create("Title", {800, 600}); // С размером
+```
+
+### Показать Окно
+```cpp
+window.show();              // Неблокирующее (модальное НЕТ)
+window.show_dialog();       // Блокирующее (модальное ДА)
+application::run(window);   // Главное окно приложения
+```
+
+### Спрятать/Закрыть
+```cpp
+window.hide();              // Спрятать (можно показать снова)
+window.visible(false);      // То же что hide()
+window.close();             // Закрыть (удаляется навсегда)
+```
+
+### Состояния Окна
+```cpp
+window.window_state(form_window_state::normal);     // Обычное
+window.window_state(form_window_state::minimized);  // Свёрнутое
+window.window_state(form_window_state::maximized);  // Развёрнутое
+```
+
+### Размер и Позиция
+```cpp
+window.size({800, 600});                           // Размер
+window.location({100, 100});                       // Позиция
+window.start_position(form_start_position::center_screen); // По центру
+```
+
+### Границы и Кнопки
+```cpp
+window.form_border_style(form_border_style::fixed_dialog);
+window.minimize_box(true);   // Кнопка сворачивания
+window.maximize_box(false);  // Без кнопки разворачивания
+window.control_box(true);    // Кнопки управления
+```
+
+### События
+```cpp
+window.load += [](auto& s, auto& e) { };         // Загружено
+window.shown += [](auto& s, auto& e) { };        // Показано
+window.form_closing += [](auto& s, auto& e) {    // Закрывается
+  e.cancel(true);  // Отменить закрытие
+};
+window.form_closed += [](auto& s, auto& e) { };  // Закрыто
+```
+
+### Владелец
+```cpp
+child.owner(parent_window);  // Родительское окно
+```
+
+---
+
+## Часть 11: ТИПИЧНЫЕ ОШИБКИ
+
+### ❌ ОШИБКА 1: Использование после close()
+```cpp
+auto window = form::create();
+window.show();
+window.close();
+window.show();  // ❌ ОШИБКА! Окно удалено!
+```
+
+✅ **Правильно:**
+```cpp
+auto window = form::create();
+window.show();
+window.hide();   // Прячем
+window.show();   // ✅ OK! Можем показать снова
+```
+
+### ❌ ОШИБКА 2: Забыли application::run()
+```cpp
+int main() {
+  auto window = form::create();
+  window.show();  // ❌ Окно мелькнёт и сразу закроется!
+}
+```
+
+✅ **Правильно:**
+```cpp
+int main() {
+  auto window = form::create();
+  application::run(window);  // ✅ OK!
+}
+```
+
+### ❌ ОШИБКА 3: Блокировка главного потока
+```cpp
+button.click += [&] {
+  std::this_thread::sleep_for(std::chrono::seconds(10));  // ❌ GUI зависнет!
+};
+```
+
+✅ **Правильно:**
+```cpp
+button.click += [&] {
+  button.enabled(false);
+  
+  std::thread([&] {
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+    
+    // Обновляем GUI из главного потока
+    window.invoke([&] {
+      button.enabled(true);
+    });
+  }).detach();
+};
+```
+
+---
+
+## ИТОГО: Когда Что Использовать?
+
+| Задача | Используй | Пример |
+|--------|-----------|---------|
+| Главное окно | `application::run()` | `application::run(main_window);` |
+| Панель инструментов | `show()` | `toolbar.show();` |
+| Диалог настроек | `show_dialog()` | `settings.show_dialog();` |
+| Временно спрятать | `hide()` | `window.hide();` |
+| Свернуть в таскбар | `minimize` | `window.window_state(minimized);` |
+| Закрыть навсегда | `close()` | `window.close();` |
+| Спросить перед закрытием | `form_closing` | `e.cancel(true);` |
+| Окно поверх других | `top_most` | `window.top_most(true);` |
+| Окно без рамки | `form_border_style` | `window.form_border_style(none);` |
+
+Теперь ты знаешь всё! 🎉

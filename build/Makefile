@@ -607,6 +607,57 @@ src/XTD.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/XTD.cpp.s
 .PHONY : src/XTD.cpp.s
 
+src/close_app.o: src/close_app.cpp.o
+.PHONY : src/close_app.o
+
+# target to build an object file
+src/close_app.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/close_app.cpp.o
+.PHONY : src/close_app.cpp.o
+
+src/close_app.i: src/close_app.cpp.i
+.PHONY : src/close_app.i
+
+# target to preprocess a source file
+src/close_app.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/close_app.cpp.i
+.PHONY : src/close_app.cpp.i
+
+src/close_app.s: src/close_app.cpp.s
+.PHONY : src/close_app.s
+
+# target to generate assembly for a file
+src/close_app.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/close_app.cpp.s
+.PHONY : src/close_app.cpp.s
+
+src/macos_window_utils.o: src/macos_window_utils.mm.o
+.PHONY : src/macos_window_utils.o
+
+# target to build an object file
+src/macos_window_utils.mm.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o
+.PHONY : src/macos_window_utils.mm.o
+
+src/macos_window_utils.i: src/macos_window_utils.mm.i
+.PHONY : src/macos_window_utils.i
+
+# target to preprocess a source file
+src/macos_window_utils.mm.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.i
+.PHONY : src/macos_window_utils.mm.i
+
+src/macos_window_utils.s: src/macos_window_utils.mm.s
+.PHONY : src/macos_window_utils.s
+
+# target to generate assembly for a file
+src/macos_window_utils.mm.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.s
+.PHONY : src/macos_window_utils.mm.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -672,6 +723,12 @@ help:
 	@echo "... src/XTD.o"
 	@echo "... src/XTD.i"
 	@echo "... src/XTD.s"
+	@echo "... src/close_app.o"
+	@echo "... src/close_app.i"
+	@echo "... src/close_app.s"
+	@echo "... src/macos_window_utils.o"
+	@echo "... src/macos_window_utils.i"
+	@echo "... src/macos_window_utils.s"
 .PHONY : help
 
 

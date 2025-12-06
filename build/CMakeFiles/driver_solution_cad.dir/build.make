@@ -254,6 +254,20 @@ CMakeFiles/driver_solution_cad.dir/src/DataExchange.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/driver_solution_cad.dir/src/DataExchange.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/user/Documents/driver-solution-cad/src/DataExchange.cpp -o CMakeFiles/driver_solution_cad.dir/src/DataExchange.cpp.s
 
+CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o: CMakeFiles/driver_solution_cad.dir/flags.make
+CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o: /Users/user/Documents/driver-solution-cad/src/close_app.cpp
+CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o: CMakeFiles/driver_solution_cad.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o -MF CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o.d -o CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o -c /Users/user/Documents/driver-solution-cad/src/close_app.cpp
+
+CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/user/Documents/driver-solution-cad/src/close_app.cpp > CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.i
+
+CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/user/Documents/driver-solution-cad/src/close_app.cpp -o CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.s
+
 # Object files for target driver_solution_cad
 driver_solution_cad_OBJECTS = \
 "CMakeFiles/driver_solution_cad.dir/src/ConstructionHistory.cpp.o" \
@@ -268,7 +282,8 @@ driver_solution_cad_OBJECTS = \
 "CMakeFiles/driver_solution_cad.dir/src/TerminalWindow.cpp.o" \
 "CMakeFiles/driver_solution_cad.dir/src/XTD.cpp.o" \
 "CMakeFiles/driver_solution_cad.dir/src/OpenGLRenderer.cpp.o" \
-"CMakeFiles/driver_solution_cad.dir/src/DataExchange.cpp.o"
+"CMakeFiles/driver_solution_cad.dir/src/DataExchange.cpp.o" \
+"CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o"
 
 # External object files for target driver_solution_cad
 driver_solution_cad_EXTERNAL_OBJECTS =
@@ -286,9 +301,10 @@ libdriver_solution_cad.a: CMakeFiles/driver_solution_cad.dir/src/TerminalWindow.
 libdriver_solution_cad.a: CMakeFiles/driver_solution_cad.dir/src/XTD.cpp.o
 libdriver_solution_cad.a: CMakeFiles/driver_solution_cad.dir/src/OpenGLRenderer.cpp.o
 libdriver_solution_cad.a: CMakeFiles/driver_solution_cad.dir/src/DataExchange.cpp.o
+libdriver_solution_cad.a: CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o
 libdriver_solution_cad.a: CMakeFiles/driver_solution_cad.dir/build.make
 libdriver_solution_cad.a: CMakeFiles/driver_solution_cad.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Linking CXX static library libdriver_solution_cad.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Linking CXX static library libdriver_solution_cad.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/driver_solution_cad.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/driver_solution_cad.dir/link.txt --verbose=$(VERBOSE)
 

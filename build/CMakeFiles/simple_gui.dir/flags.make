@@ -8,3 +8,5 @@ CXX_INCLUDES = -I/Users/user/Documents/driver-solution-cad/include
 
 CXX_FLAGS = -std=gnu++2b -Wall -Wextra -Wno-unused-parameter -Wno-unknown-pragmas -pedantic -Wno-c++20-extensions
 
+# Custom flags: CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o_FLAGS = -x objective-c++
+

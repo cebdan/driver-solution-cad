@@ -190,3 +190,31 @@ extern "C" void setup_solution_manager_window_style() {
         }
     }
 }
+
+// Function to minimize window by title
+extern "C" void minimize_window_by_title(const char* window_title) {
+    @autoreleasepool {
+        NSArray* windows = [[NSApplication sharedApplication] windows];
+        NSString* targetTitle = [NSString stringWithUTF8String:window_title];
+        
+        for (NSWindow* window in windows) {
+            NSString* title = [window title];
+            if (title && [title isEqualToString:targetTitle]) {
+                [window miniaturize:nil];
+                return;
+            }
+        }
+        
+        // If not found, try key window and main window
+        NSWindow* keyWindow = [[NSApplication sharedApplication] keyWindow];
+        if (keyWindow && [[keyWindow title] isEqualToString:targetTitle]) {
+            [keyWindow miniaturize:nil];
+            return;
+        }
+        
+        NSWindow* mainWindow = [[NSApplication sharedApplication] mainWindow];
+        if (mainWindow && mainWindow != keyWindow && [[mainWindow title] isEqualToString:targetTitle]) {
+            [mainWindow miniaturize:nil];
+        }
+    }
+}

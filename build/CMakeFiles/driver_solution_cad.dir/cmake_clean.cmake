@@ -25,6 +25,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/driver_solution_cad.dir/src/Value.cpp.o.d"
   "CMakeFiles/driver_solution_cad.dir/src/XTD.cpp.o"
   "CMakeFiles/driver_solution_cad.dir/src/XTD.cpp.o.d"
+  "CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o"
+  "CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o.d"
   "libdriver_solution_cad.a"
   "libdriver_solution_cad.pdb"
 )

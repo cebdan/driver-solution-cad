@@ -86,14 +86,46 @@ CMakeFiles/simple_gui.dir/examples/simple_gui_working.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/simple_gui.dir/examples/simple_gui_working.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/user/Documents/driver-solution-cad/examples/simple_gui_working.cpp -o CMakeFiles/simple_gui.dir/examples/simple_gui_working.cpp.s
 
+CMakeFiles/simple_gui.dir/src/close_app.cpp.o: CMakeFiles/simple_gui.dir/flags.make
+CMakeFiles/simple_gui.dir/src/close_app.cpp.o: /Users/user/Documents/driver-solution-cad/src/close_app.cpp
+CMakeFiles/simple_gui.dir/src/close_app.cpp.o: CMakeFiles/simple_gui.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/simple_gui.dir/src/close_app.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/simple_gui.dir/src/close_app.cpp.o -MF CMakeFiles/simple_gui.dir/src/close_app.cpp.o.d -o CMakeFiles/simple_gui.dir/src/close_app.cpp.o -c /Users/user/Documents/driver-solution-cad/src/close_app.cpp
+
+CMakeFiles/simple_gui.dir/src/close_app.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/simple_gui.dir/src/close_app.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/user/Documents/driver-solution-cad/src/close_app.cpp > CMakeFiles/simple_gui.dir/src/close_app.cpp.i
+
+CMakeFiles/simple_gui.dir/src/close_app.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/simple_gui.dir/src/close_app.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/user/Documents/driver-solution-cad/src/close_app.cpp -o CMakeFiles/simple_gui.dir/src/close_app.cpp.s
+
+CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o: CMakeFiles/simple_gui.dir/flags.make
+CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o: /Users/user/Documents/driver-solution-cad/src/macos_window_utils.mm
+CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o: CMakeFiles/simple_gui.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -x objective-c++ -MD -MT CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o -MF CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o.d -o CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o -c /Users/user/Documents/driver-solution-cad/src/macos_window_utils.mm
+
+CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -x objective-c++ -E /Users/user/Documents/driver-solution-cad/src/macos_window_utils.mm > CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.i
+
+CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -x objective-c++ -S /Users/user/Documents/driver-solution-cad/src/macos_window_utils.mm -o CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.s
+
 # Object files for target simple_gui
 simple_gui_OBJECTS = \
-"CMakeFiles/simple_gui.dir/examples/simple_gui_working.cpp.o"
+"CMakeFiles/simple_gui.dir/examples/simple_gui_working.cpp.o" \
+"CMakeFiles/simple_gui.dir/src/close_app.cpp.o" \
+"CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o"
 
 # External object files for target simple_gui
 simple_gui_EXTERNAL_OBJECTS =
 
 simple_gui.app/Contents/MacOS/simple_gui: CMakeFiles/simple_gui.dir/examples/simple_gui_working.cpp.o
+simple_gui.app/Contents/MacOS/simple_gui: CMakeFiles/simple_gui.dir/src/close_app.cpp.o
+simple_gui.app/Contents/MacOS/simple_gui: CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o
 simple_gui.app/Contents/MacOS/simple_gui: CMakeFiles/simple_gui.dir/build.make
 simple_gui.app/Contents/MacOS/simple_gui: /usr/local/lib/libxtd.forms.a
 simple_gui.app/Contents/MacOS/simple_gui: /usr/local/lib/libxtd.forms.native.wxwidgets.a
@@ -103,7 +135,7 @@ simple_gui.app/Contents/MacOS/simple_gui: /usr/local/lib/libxtd.tunit.a
 simple_gui.app/Contents/MacOS/simple_gui: /usr/local/lib/libxtd.core.a
 simple_gui.app/Contents/MacOS/simple_gui: /usr/local/lib/libxtd.core.native.macos.a
 simple_gui.app/Contents/MacOS/simple_gui: CMakeFiles/simple_gui.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable simple_gui.app/Contents/MacOS/simple_gui"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable simple_gui.app/Contents/MacOS/simple_gui"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/simple_gui.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

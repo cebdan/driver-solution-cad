@@ -16,6 +16,9 @@ extern "C" void setup_window_style_no_close_button(void* window_handle);
 
 // Function to setup style for Solution manager window only (not for all windows)
 extern "C" void setup_solution_manager_window_style();
+
+// Function to minimize window by title
+extern "C" void minimize_window_by_title(const char* window_title);
 #endif
 
 #endif // MACOS_WINDOW_UTILS_H
