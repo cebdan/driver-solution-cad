@@ -1,16 +1,12 @@
 #include <xtd/xtd>
 #include "../include/close_app.h"
-#ifdef __APPLE__
 #include "../include/macos_window_utils.h"
 #include <thread>
 #include <chrono>
-#endif
 #include <cstdlib>
 #include <string>
 #include <filesystem>
-#if defined(__APPLE__)
 #include <mach-o/dyld.h>
-#endif
 
 using namespace xtd;
 using namespace xtd::forms;
@@ -57,39 +53,201 @@ public:
         show();
         bring_to_front();
         
-        // On macOS, setup style for Solution manager window only
-        #if defined(__APPLE__)
+        // Setup style for Solution manager window only - native macOS
         application::do_events();
         setup_solution_manager_window_style();
         // Also try direct method as backup
         hide_close_button_by_title("Solution manager");
-        #endif
     }
     
     void update_status(const std::string& text) {
         status_label.text(text);
     }
     
+    // Button click handlers (public for menu access)
+    void on_2d_solutions_click() {
+        status_label.text("2D Solutions activated");
+        // Minimize the manager window first (keeps menu visible) - native macOS
+        minimize_window_by_title("Solution manager");
+        // Then show message box
+        message_box::show("2D Solutions activated!\n\nDefault coordinate system: Global CS (0,0,0,0,0,0)", 
+                         "Solution Manager", 
+                         message_box_buttons::ok, 
+                         message_box_icon::information);
+    }
+    
+    void on_3d_solutions_click() {
+        message_box::show("3D Solutions activated!", 
+                         "Solution Manager", 
+                         message_box_buttons::ok, 
+                         message_box_icon::information);
+        status_label.text("3D Solutions activated");
+    }
+    
+    void on_draft_solutions_click() {
+        message_box::show("Draft Solutions activated!", 
+                         "Solution Manager", 
+                         message_box_buttons::ok, 
+                         message_box_icon::information);
+        status_label.text("Draft Solutions activated");
+    }
+    
+    void on_bom_solution_click() {
+        message_box::show("BOM Solution activated!", 
+                         "Solution Manager", 
+                         message_box_buttons::ok, 
+                         message_box_icon::information);
+        status_label.text("BOM Solution activated");
+    }
+    
 private:
     
     
     void setup_controls() {
+        // Status label at the bottom
         status_label.parent(*this);
         status_label.text("Ready");
         status_label.location({10, height() - 30});
         status_label.size({width() - 20, 25});
         status_label.anchor(anchor_styles::left | anchor_styles::right | anchor_styles::bottom);
         
-        welcome_label.parent(*this);
-        welcome_label.text("Welcome to CAD System!\n\nUse File -> New 2D Document to create a new document.");
-        welcome_label.location({20, 20});
-        welcome_label.size({width() - 40, 150});
-        welcome_label.anchor(anchor_styles::left | anchor_styles::right | anchor_styles::top);
-        welcome_label.text_align(content_alignment::middle_center);
+        // Main content area (left side) - image display
+        image_panel.parent(*this);
+        image_panel.location({20, 20});
+        image_panel.size({width() - 250, height() - 80});
+        image_panel.anchor(anchor_styles::left | anchor_styles::right | anchor_styles::top | anchor_styles::bottom);
+        image_panel.border_style(border_style::none);
+        image_panel.back_color(drawing::color::white);
+        
+        // Try to load image if exists
+        load_image();
+        
+        // Buttons on the right side
+        int button_width = 200;
+        int button_height = 40;
+        int button_x = width() - button_width - 20;
+        int button_y = 50;
+        int button_spacing = 50;
+        
+        // 2D Solutions button
+        button_2d_solutions.parent(*this);
+        button_2d_solutions.text("2d solutions");
+        button_2d_solutions.location({button_x, button_y});
+        button_2d_solutions.size({button_width, button_height});
+        button_2d_solutions.anchor(anchor_styles::right | anchor_styles::top);
+        button_2d_solutions.click += [this](object& sender, const event_args& e) {
+            on_2d_solutions_click();
+        };
+        
+        // 3D Solutions button
+        button_3d_solutions.parent(*this);
+        button_3d_solutions.text("3d solutions");
+        button_3d_solutions.location({button_x, button_y + button_spacing});
+        button_3d_solutions.size({button_width, button_height});
+        button_3d_solutions.anchor(anchor_styles::right | anchor_styles::top);
+        button_3d_solutions.click += [this](object& sender, const event_args& e) {
+            on_3d_solutions_click();
+        };
+        
+        // Draft Solutions button
+        button_draft_solutions.parent(*this);
+        button_draft_solutions.text("Draft solutions");
+        button_draft_solutions.location({button_x, button_y + button_spacing * 2});
+        button_draft_solutions.size({button_width, button_height});
+        button_draft_solutions.anchor(anchor_styles::right | anchor_styles::top);
+        button_draft_solutions.click += [this](object& sender, const event_args& e) {
+            on_draft_solutions_click();
+        };
+        
+        // BOM Solution button
+        button_bom_solution.parent(*this);
+        button_bom_solution.text("Bom solution");
+        button_bom_solution.location({button_x, button_y + button_spacing * 3});
+        button_bom_solution.size({button_width, button_height});
+        button_bom_solution.anchor(anchor_styles::right | anchor_styles::top);
+        button_bom_solution.click += [this](object& sender, const event_args& e) {
+            on_bom_solution_click();
+        };
+        
+        // Load Image button (below BOM)
+        button_load_image.parent(*this);
+        button_load_image.text("Load Image");
+        button_load_image.location({button_x, button_y + button_spacing * 4 + 20});
+        button_load_image.size({button_width, button_height});
+        button_load_image.anchor(anchor_styles::right | anchor_styles::top);
+        button_load_image.click += [this](object& sender, const event_args& e) {
+            open_image_dialog();
+        };
+    }
+    
+    void load_image() {
+        // Try to find image file in project directory
+        std::vector<std::filesystem::path> search_paths;
+        
+        // Current directory
+        auto cwd = std::filesystem::current_path();
+        search_paths.push_back(cwd / "draft_image.png");
+        search_paths.push_back(cwd / "draft_image.jpg");
+        search_paths.push_back(cwd / "image.png");
+        search_paths.push_back(cwd / "image.jpg");
+        
+        // Parent directory (if in build)
+        if (cwd.filename() == "build") {
+            search_paths.push_back(cwd.parent_path() / "draft_image.png");
+            search_paths.push_back(cwd.parent_path() / "draft_image.jpg");
+            search_paths.push_back(cwd.parent_path() / "image.png");
+            search_paths.push_back(cwd.parent_path() / "image.jpg");
+        }
+        
+        // Try to load image
+        for (const auto& path : search_paths) {
+            if (std::filesystem::exists(path)) {
+                try {
+                    drawing::bitmap bmp(path.string());
+                    image_panel.image(bmp);
+                    image_panel.size_mode(picture_box_size_mode::zoom);
+                    return;
+                } catch (...) {
+                    // If image loading fails, continue to next path
+                }
+            }
+        }
+        
+        // If no image found, leave empty (will show white background with border)
+    }
+    
+    void load_image_from_file(const std::string& file_path) {
+        if (std::filesystem::exists(file_path)) {
+            try {
+                drawing::bitmap bmp(file_path);
+                image_panel.image(bmp);
+                image_panel.size_mode(picture_box_size_mode::zoom);
+                status_label.text("Image loaded: " + std::filesystem::path(file_path).filename().string());
+            } catch (...) {
+                message_box::show("Failed to load image: " + file_path, 
+                                 "Error", 
+                                 message_box_buttons::ok, 
+                                 message_box_icon::error);
+            }
+        }
+    }
+    
+    void open_image_dialog() {
+        open_file_dialog dialog;
+        dialog.filter("Image Files (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif|All Files (*.*)|*.*");
+        dialog.title("Select Image");
+        if (dialog.show_dialog(*this) == dialog_result::ok) {
+            load_image_from_file(dialog.file_name());
+        }
     }
     
     label status_label;
-    label welcome_label;
+    picture_box image_panel;
+    button button_2d_solutions;
+    button button_3d_solutions;
+    button button_draft_solutions;
+    button button_bom_solution;
+    button button_load_image;
     
     friend auto main() -> int;
 };
@@ -111,11 +269,9 @@ auto main() -> int {
     static main_form form;
     form.show();
     
-    // On macOS, setup style for Solution manager window only (after it's created)
-    #if defined(__APPLE__)
+    // Setup style for Solution manager window only (after it's created) - native macOS
     application::do_events();
     setup_solution_manager_window_style();
-    #endif
     
     // Create global menu items as static to keep them alive even when window is hidden
     // File menu
@@ -174,19 +330,36 @@ auto main() -> int {
     }};
     g_app_open_manager = &app_open_manager;
     
-    static menu_item app_solution_2d = menu_item {"&2D Solution", [](object& sender, const event_args& e) {
+    static menu_item app_solution_2d = menu_item {"&2D Solutions", [](object& sender, const event_args& e) {
         if (g_main_form) {
             g_main_form->show_manager();
-            message_box::show("2D Solution activated!\n\nDefault coordinate system: Global CS (0,0,0,0,0,0)", 
-                             "Solution Manager", 
-                             message_box_buttons::ok, 
-                             message_box_icon::information);
-            g_main_form->update_status("2D Solution activated");
+            g_main_form->on_2d_solutions_click();
         }
     }};
     g_app_solution_2d = &app_solution_2d;
     
-    static menu_item app_manager_menu = menu_item {"&Manager", {app_open_manager, app_solution_2d}};
+    static menu_item app_solution_3d = menu_item {"&3D Solutions", [](object& sender, const event_args& e) {
+        if (g_main_form) {
+            g_main_form->show_manager();
+            g_main_form->on_3d_solutions_click();
+        }
+    }};
+    
+    static menu_item app_draft_solutions = menu_item {"&Draft Solutions", [](object& sender, const event_args& e) {
+        if (g_main_form) {
+            g_main_form->show_manager();
+            g_main_form->on_draft_solutions_click();
+        }
+    }};
+    
+    static menu_item app_bom_solution = menu_item {"&BOM Solution", [](object& sender, const event_args& e) {
+        if (g_main_form) {
+            g_main_form->show_manager();
+            g_main_form->on_bom_solution_click();
+        }
+    }};
+    
+    static menu_item app_manager_menu = menu_item {"&Manager", {app_open_manager, app_solution_2d, app_solution_3d, app_draft_solutions, app_bom_solution}};
     
     // Function to open document file using system default application
     auto open_document = [](const std::string& filename) {
@@ -204,8 +377,7 @@ auto main() -> int {
             search_paths.push_back(cwd.parent_path() / filename);
         }
         
-        // 3. Try relative to executable (for .app bundle on macOS)
-        #if defined(__APPLE__)
+        // 3. Try relative to executable (for .app bundle on macOS) - native macOS
         char exe_path[1024];
         uint32_t size = sizeof(exe_path);
         if (_NSGetExecutablePath(exe_path, &size) == 0) {
@@ -218,7 +390,6 @@ auto main() -> int {
                 search_paths.push_back(app_path.parent_path() / filename);
             }
         }
-        #endif
         
         // 4. Try absolute path if filename is absolute
         if (std::filesystem::path(filename).is_absolute()) {
@@ -238,13 +409,8 @@ auto main() -> int {
         if (found) {
             std::string command;
             std::string path_str = doc_path.string();
-            #if defined(__APPLE__)
+            // Native macOS command
             command = "open \"" + path_str + "\"";
-            #elif defined(_WIN32)
-            command = "start \"\" \"" + path_str + "\"";
-            #else
-            command = "xdg-open \"" + path_str + "\"";
-            #endif
             std::system(command.c_str());
         } else {
             message_box::show("Document not found: " + filename, 
