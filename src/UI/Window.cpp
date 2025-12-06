@@ -19,10 +19,14 @@ void Window::terminateGLFW() {
 Window::Window(int width, int height, const std::string& title)
     : window_(nullptr), width_(width), height_(height) {
     
-    // Configure GLFW - use OpenGL 2.1 for compatibility with immediate mode
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
+    // Configure GLFW - use OpenGL 3.3 for NanoGUI compatibility
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    
+    #ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    #endif
     
     // Enable window resizing
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);

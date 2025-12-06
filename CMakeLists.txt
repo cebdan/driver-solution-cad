@@ -167,6 +167,20 @@ if(BUILD_UI)
     endif()
 
     if(GLFW_FOUND)
+        # NanoGUI
+        set(NANOGUI_DIR ${CMAKE_SOURCE_DIR}/third_party/nanogui)
+        
+        # Force OpenGL backend instead of Metal (for compatibility)
+        set(NANOGUI_BACKEND "OpenGL" CACHE STRING "NanoGUI backend" FORCE)
+        
+        # Add NanoGUI as subdirectory
+        add_subdirectory(${NANOGUI_DIR} nanogui_build)
+        
+        # NanoGUI requires OpenGL 3.3+, not OpenGL 2.1
+        # We'll need to update Window.cpp to request OpenGL 3.3 context
+        
+        message(STATUS "NanoGUI found and will be built")
+        
         # Create UI library
         add_library(CADUI STATIC
             src/UI/Window.cpp
@@ -195,15 +209,24 @@ if(BUILD_UI)
             )
         endif()
         
-        # OpenGL (usually comes with system)
+        # OpenGL 3.3+ (required by NanoGUI)
         find_package(OpenGL REQUIRED)
         target_link_libraries(CADUI PUBLIC OpenGL::GL)
         
+        # Link NanoGUI to CADUI
+        target_link_libraries(CADUI PUBLIC nanogui)
+        
         # macOS specific frameworks
         if(APPLE)
-            find_library(COCOA_FRAMEWORK Cocoa)
-            find_library(IOKIT_FRAMEWORK IOKit)
-            find_library(COREVIDEO_FRAMEWORK CoreVideo)
+            if(NOT DEFINED COCOA_FRAMEWORK)
+                find_library(COCOA_FRAMEWORK Cocoa)
+            endif()
+            if(NOT DEFINED IOKIT_FRAMEWORK)
+                find_library(IOKIT_FRAMEWORK IOKit)
+            endif()
+            if(NOT DEFINED COREVIDEO_FRAMEWORK)
+                find_library(COREVIDEO_FRAMEWORK CoreVideo)
+            endif()
             target_link_libraries(CADUI PUBLIC
                 ${COCOA_FRAMEWORK}
                 ${IOKIT_FRAMEWORK}

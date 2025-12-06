@@ -8,6 +8,15 @@
 #else
 #include <GL/gl.h>
 #endif
+// NanoGUI includes
+#include <nanogui/nanogui.h>
+#include <nanogui/window.h>
+#include <nanogui/layout.h>
+#include <nanogui/button.h>
+#include <nanogui/label.h>
+#include <nanogui/vscrollpanel.h>
+#include <nanogui/textbox.h>
+using namespace nanogui;
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -15,6 +24,8 @@
 #include <cmath>
 #include <thread>
 #include <chrono>
+#include <algorithm>
+#include <cctype>
 #include <map>
 
 #ifndef M_PI
@@ -34,7 +45,16 @@ Application::Application()
       lastMouseX_(0.0), lastMouseY_(0.0), use3DView_(true),
       cameraOffsetX_(0.0f), cameraOffsetY_(0.0f),
       activeRightTab_(RightPanelTab::Tree),
-      renderedPoints_(0), renderedLines_(0), renderedSolids_(0) {
+      renderedPoints_(0), renderedLines_(0), renderedSolids_(0),
+      showCloseDialog_(false), closeDialogChoice_(CloseDialogChoice::None),
+      showUIEditor_(false), selectedWindow_(""),
+      terminalHistoryScrollPos_(0) {
+    // Initialize terminal input buffer
+    terminalInput_[0] = '\0';
+    // Add welcome message to terminal
+    terminalHistory_.push_back("Driver-Solution CAD Terminal");
+    terminalHistory_.push_back("Type 'help' for available commands");
+    terminalHistory_.push_back("");
     
     // Initialize GLFW once for all windows
     if (!Window::initializeGLFW()) {
@@ -66,6 +86,11 @@ Application::Application()
     
     // Create 4 independent windows
     initializeWindows();
+    
+    // TODO: Initialize NanoGUI
+    // initializeNanoGUI();
+    
+    // Setup callbacks
     setupCallbacks();
     
     // Create a test point
@@ -81,6 +106,9 @@ Application::Application()
 }
 
 Application::~Application() {
+    // Shutdown NanoGUI
+    shutdownNanoGUI();
+    
     // Save window settings before closing
     if (windowConfig_) {
         if (windowTopBar_ && !windowTopBar_->shouldClose()) {
@@ -131,6 +159,25 @@ void Application::initializeWindows() {
     int rightPanelHeight = (rightPanelSettings.height != -1) ? rightPanelSettings.height : 800;
     windowRightPanel_ = std::make_unique<Window>(rightPanelWidth, rightPanelHeight, "Right Panel");
     applyWindowSettings(rightPanelSettings, windowRightPanel_->getHandle());
+    
+    // Window 6: Terminal/Command line
+    WindowSettings terminalSettings = windowConfig_->loadWindowSettings("Terminal");
+    int terminalWidth = (terminalSettings.width != -1) ? terminalSettings.width : 800;
+    int terminalHeight = (terminalSettings.height != -1) ? terminalSettings.height : 400;
+    windowTerminal_ = std::make_unique<Window>(terminalWidth, terminalHeight, "Terminal");
+    applyWindowSettings(terminalSettings, windowTerminal_->getHandle());
+    
+    // Window 5: Close Dialog (initially hidden, shown when needed)
+    windowCloseDialog_ = std::make_unique<Window>(500, 200, "Close Application");
+    // Center dialog on screen
+    int monitorWidth = 1920, monitorHeight = 1080;
+    int dialogX = (monitorWidth - 500) / 2;
+    int dialogY = (monitorHeight - 200) / 2;
+    glfwSetWindowPos(windowCloseDialog_->getHandle(), dialogX, dialogY);
+    // Make it non-resizable
+    glfwSetWindowAttrib(windowCloseDialog_->getHandle(), GLFW_RESIZABLE, GLFW_FALSE);
+    // Initially hide it
+    glfwHideWindow(windowCloseDialog_->getHandle());
 }
 
 void Application::initializeLayers() {
@@ -189,14 +236,29 @@ void Application::initializeToolGroups() {
 }
 
 void Application::setupCallbacks() {
+    // Store Application pointer in window user data for callbacks
+    if (windowTopBar_) {
+        glfwSetWindowUserPointer(windowTopBar_->getHandle(), this);
+    }
+    if (windowTerminal_) {
+        glfwSetWindowUserPointer(windowTerminal_->getHandle(), this);
+    }
     // Setup callbacks for each window
     // TopBar callbacks
     glfwSetMouseButtonCallback(windowTopBar_->getHandle(), [](GLFWwindow* window, int button, int action, int mods) {
         Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
-        if (app && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        if (!app) return;
+        
+        // Forward to NanoGUI first if available
+        if (app->screenTopBar_) {
+            app->screenTopBar_->mouse_button_callback_event(button, action, mods);
+        }
+        
+        // Then handle custom TopBar clicks (only if not handled by NanoGUI)
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
             double x, y;
             glfwGetCursorPos(window, &x, &y);
-    int width, height;
+            int width, height;
             glfwGetFramebufferSize(window, &width, &height);
             app->handleTopBarClick(x, y, width, height);
         }
@@ -214,6 +276,27 @@ void Application::setupCallbacks() {
         if (app) {
             app->constrainWindowToScreen(window);
             app->saveWindowSettings("TopBar", window);
+        }
+    });
+    // Close callback - standard close behavior for TopBar (no dialog)
+    // Hotkey for UI Editor (F12) and Command+Q / Ctrl+Q
+    glfwSetKeyCallback(windowTopBar_->getHandle(), [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app) {
+            // F12 for UI Editor
+            if (key == GLFW_KEY_F12 && action == GLFW_PRESS) {
+                app->showUIEditor_ = !app->showUIEditor_;
+            }
+            // Command+Q (macOS) or Ctrl+Q (Windows/Linux) - standard close
+            #ifdef __APPLE__
+            bool isCommand = (mods & GLFW_MOD_SUPER) != 0;
+            #else
+            bool isCommand = (mods & GLFW_MOD_CONTROL) != 0;
+            #endif
+            if (key == GLFW_KEY_Q && action == GLFW_PRESS && isCommand) {
+                // Standard close - close TopBar window
+                glfwSetWindowShouldClose(window, GLFW_TRUE);
+            }
         }
     });
     glfwSetWindowUserPointer(windowTopBar_->getHandle(), this);
@@ -315,31 +398,77 @@ void Application::setupCallbacks() {
         }
     });
     glfwSetWindowUserPointer(windowRightPanel_->getHandle(), this);
+    
+    // CloseDialog callbacks
+    glfwSetMouseButtonCallback(windowCloseDialog_->getHandle(), [](GLFWwindow* window, int button, int action, int mods) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+            double x, y;
+            glfwGetCursorPos(window, &x, &y);
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            app->handleCloseDialogClick(x, y, width, height);
+        }
+    });
+    // F12 also works in dialog
+    glfwSetKeyCallback(windowCloseDialog_->getHandle(), [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app && key == GLFW_KEY_F12 && action == GLFW_PRESS) {
+            app->showUIEditor_ = !app->showUIEditor_;
+        }
+    });
+    glfwSetCursorPosCallback(windowCloseDialog_->getHandle(), [](GLFWwindow* window, double xpos, double ypos) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+        if (app && app->showCloseDialog_) {
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            int buttonIndex = app->hitTestCloseDialogButton(xpos, ypos, width, height);
+            if (buttonIndex == 0) {
+                app->closeDialogChoice_ = CloseDialogChoice::Save;
+            } else if (buttonIndex == 1) {
+                app->closeDialogChoice_ = CloseDialogChoice::CloseWithoutSave;
+            } else if (buttonIndex == 2) {
+                app->closeDialogChoice_ = CloseDialogChoice::Cancel;
+            } else {
+                app->closeDialogChoice_ = CloseDialogChoice::None;
+            }
+        }
+    });
+    glfwSetWindowUserPointer(windowCloseDialog_->getHandle(), this);
 }
 
 void Application::run() {
     // Main loop: handle all 4 windows
     while (true) {
-        // Save settings for windows that are about to close
+        // Save settings for windows that are about to close and destroy them
         if (windowTopBar_ && windowTopBar_->shouldClose()) {
             saveWindowSettings("TopBar", windowTopBar_->getHandle());
+            windowTopBar_.reset(); // Destroy window
         }
         if (windowLeftTools_ && windowLeftTools_->shouldClose()) {
             saveWindowSettings("LeftTools", windowLeftTools_->getHandle());
+            windowLeftTools_.reset(); // Destroy window
         }
         if (windowMainView_ && windowMainView_->shouldClose()) {
             saveWindowSettings("MainView", windowMainView_->getHandle());
+            windowMainView_.reset(); // Destroy window
         }
         if (windowRightPanel_ && windowRightPanel_->shouldClose()) {
             saveWindowSettings("RightPanel", windowRightPanel_->getHandle());
+            windowRightPanel_.reset(); // Destroy window
+        }
+        if (windowTerminal_ && windowTerminal_->shouldClose()) {
+            saveWindowSettings("Terminal", windowTerminal_->getHandle());
+            windowTerminal_.reset(); // Destroy window
         }
         
         // Check if all windows are closed
         bool allClosed = true;
-        if (windowTopBar_ && !windowTopBar_->shouldClose()) allClosed = false;
-        if (windowLeftTools_ && !windowLeftTools_->shouldClose()) allClosed = false;
-        if (windowMainView_ && !windowMainView_->shouldClose()) allClosed = false;
-        if (windowRightPanel_ && !windowRightPanel_->shouldClose()) allClosed = false;
+        if (windowTopBar_) allClosed = false;
+        if (windowLeftTools_) allClosed = false;
+        if (windowMainView_) allClosed = false;
+        if (windowRightPanel_) allClosed = false;
+        if (windowTerminal_) allClosed = false;
         
         if (allClosed) {
             // Save all settings before exit
@@ -352,6 +481,22 @@ void Application::run() {
         // Poll events for all windows
         glfwPollEvents();
         
+        // Check for window close events BEFORE rendering
+        // This ensures close events are processed immediately
+        // TopBar now closes normally without dialog
+        if (windowTopBar_ && windowTopBar_->shouldClose()) {
+            // Will be handled in the next iteration
+        }
+        if (windowLeftTools_ && windowLeftTools_->shouldClose()) {
+            // Will be handled in the next iteration
+        }
+        if (windowMainView_ && windowMainView_->shouldClose()) {
+            // Will be handled in the next iteration
+        }
+        if (windowRightPanel_ && windowRightPanel_->shouldClose()) {
+            // Will be handled in the next iteration
+        }
+        
         // Render each window if it's not closed and not minimized
         if (windowTopBar_ && !windowTopBar_->shouldClose()) {
             int fbWidth, fbHeight;
@@ -359,7 +504,25 @@ void Application::run() {
             if (fbWidth > 0 && fbHeight > 0 && 
                 glfwGetWindowAttrib(windowTopBar_->getHandle(), GLFW_ICONIFIED) != GLFW_TRUE) {
                 glfwMakeContextCurrent(windowTopBar_->getHandle());
+                
                 renderTopBar(windowTopBar_.get());
+                
+                // Render NanoGUI for TopBar (close dialog, UI editor)
+                if (screenTopBar_) {
+                    glfwMakeContextCurrent(windowTopBar_->getHandle());
+                    
+                    // Render UI editor if needed
+                    if (showUIEditor_) {
+                        renderUIEditor();
+                    }
+                    
+                    screenTopBar_->draw_setup();
+                    screenTopBar_->clear();
+                    screenTopBar_->draw_contents();
+                    screenTopBar_->draw_widgets();
+                    screenTopBar_->draw_teardown();
+                }
+                
                 windowTopBar_->swapBuffers();
             }
         }
@@ -396,6 +559,32 @@ void Application::run() {
                 windowRightPanel_->swapBuffers();
             }
         }
+        
+        if (windowTerminal_ && !windowTerminal_->shouldClose()) {
+            int fbWidth, fbHeight;
+            glfwGetFramebufferSize(windowTerminal_->getHandle(), &fbWidth, &fbHeight);
+            if (fbWidth > 0 && fbHeight > 0 && 
+                glfwGetWindowAttrib(windowTerminal_->getHandle(), GLFW_ICONIFIED) != GLFW_TRUE) {
+                glfwMakeContextCurrent(windowTerminal_->getHandle());
+                
+                renderTerminal(windowTerminal_.get());
+                
+                // Render NanoGUI for Terminal
+                if (screenTerminal_) {
+                    glfwMakeContextCurrent(windowTerminal_->getHandle());
+                    screenTerminal_->draw_setup();
+                    screenTerminal_->clear();
+                    screenTerminal_->draw_contents();
+                    screenTerminal_->draw_widgets();
+                    screenTerminal_->draw_teardown();
+                }
+                
+                windowTerminal_->swapBuffers();
+            }
+        }
+        
+        // Close dialog is now rendered as ImGui modal in TopBar window
+        // No need to render separate window
         
         // Small sleep to prevent 100% CPU usage
         std::this_thread::sleep_for(std::chrono::milliseconds(16));  // ~60 FPS
@@ -1303,6 +1492,829 @@ void Application::constrainWindowToScreen(GLFWwindow* window) const {
     // Apply corrected position if changed
     if (positionChanged && (x != originalX || y != originalY)) {
         glfwSetWindowPos(window, x, y);
+    }
+}
+
+void Application::renderCloseDialog(Window* window) {
+    int width, height;
+    glfwGetFramebufferSize(window->getHandle(), &width, &height);
+    
+    glViewport(0, 0, width, height);
+    glClearColor(0.25f, 0.25f, 0.25f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    // Setup 2D orthographic projection
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, width, 0, height, -1.0f, 1.0f);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    
+    glDisable(GL_DEPTH_TEST);
+    
+    // Dialog background
+    glColor4f(0.3f, 0.3f, 0.3f, 1.0f);
+    glBegin(GL_QUADS);
+    glVertex2f(0.0f, 0.0f);
+    glVertex2f(static_cast<float>(width), 0.0f);
+    glVertex2f(static_cast<float>(width), static_cast<float>(height));
+    glVertex2f(0.0f, static_cast<float>(height));
+    glEnd();
+    
+    // Dialog border
+    glColor3f(0.5f, 0.5f, 0.5f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(0.0f, 0.0f);
+    glVertex2f(static_cast<float>(width), 0.0f);
+    glVertex2f(static_cast<float>(width), static_cast<float>(height));
+    glVertex2f(0.0f, static_cast<float>(height));
+    glEnd();
+    
+    // Title area
+    const float titleHeight = 50.0f;
+    glColor4f(0.2f, 0.2f, 0.2f, 1.0f);
+    glBegin(GL_QUADS);
+    glVertex2f(0.0f, static_cast<float>(height) - titleHeight);
+    glVertex2f(static_cast<float>(width), static_cast<float>(height) - titleHeight);
+    glVertex2f(static_cast<float>(width), static_cast<float>(height));
+    glVertex2f(0.0f, static_cast<float>(height));
+    glEnd();
+    
+    // Title text: "Close Application" - larger and more visible
+    glColor3f(0.95f, 0.95f, 0.95f);
+    drawText("Close Application", 20.0f, static_cast<float>(height) - 30.0f, 1.5f);
+    
+    // Message text: "Do you want to save before closing?" - system-like size
+    glColor3f(0.85f, 0.85f, 0.85f);
+    drawText("Do you want to save before closing?", 20.0f, static_cast<float>(height) - 90.0f, 1.2f);
+    
+    // Three buttons: Save, Close without Save, Cancel
+    const float buttonWidth = 140.0f;
+    const float buttonHeight = 45.0f;
+    const float buttonSpacing = 20.0f;
+    const float buttonY = 30.0f;
+    const float totalButtonsWidth = buttonWidth * 3.0f + buttonSpacing * 2.0f;
+    const float buttonStartX = (static_cast<float>(width) - totalButtonsWidth) * 0.5f;
+    
+    // Button 1: Save
+    float btn1X = buttonStartX;
+    glColor4f(0.3f, 0.5f, 0.8f, 1.0f);
+    if (closeDialogChoice_ == CloseDialogChoice::Save) {
+        glColor4f(0.4f, 0.6f, 0.9f, 1.0f);
+    }
+    glBegin(GL_QUADS);
+    glVertex2f(btn1X, buttonY);
+    glVertex2f(btn1X + buttonWidth, buttonY);
+    glVertex2f(btn1X + buttonWidth, buttonY + buttonHeight);
+    glVertex2f(btn1X, buttonY + buttonHeight);
+    glEnd();
+    glColor3f(0.95f, 0.95f, 0.95f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(btn1X, buttonY);
+    glVertex2f(btn1X + buttonWidth, buttonY);
+    glVertex2f(btn1X + buttonWidth, buttonY + buttonHeight);
+    glVertex2f(btn1X, buttonY + buttonHeight);
+    glEnd();
+    // Button text: "Save" - system font size
+    glColor3f(1.0f, 1.0f, 1.0f);
+    drawText("Save", btn1X + buttonWidth * 0.5f - 25.0f, buttonY + buttonHeight * 0.5f - 10.0f, 1.3f);
+    
+    // Button 2: Close without Save
+    float btn2X = btn1X + buttonWidth + buttonSpacing;
+    glColor4f(0.6f, 0.3f, 0.3f, 1.0f);
+    if (closeDialogChoice_ == CloseDialogChoice::CloseWithoutSave) {
+        glColor4f(0.7f, 0.4f, 0.4f, 1.0f);
+    }
+    glBegin(GL_QUADS);
+    glVertex2f(btn2X, buttonY);
+    glVertex2f(btn2X + buttonWidth, buttonY);
+    glVertex2f(btn2X + buttonWidth, buttonY + buttonHeight);
+    glVertex2f(btn2X, buttonY + buttonHeight);
+    glEnd();
+    glColor3f(0.95f, 0.95f, 0.95f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(btn2X, buttonY);
+    glVertex2f(btn2X + buttonWidth, buttonY);
+    glVertex2f(btn2X + buttonWidth, buttonY + buttonHeight);
+    glVertex2f(btn2X, buttonY + buttonHeight);
+    glEnd();
+    // Button text: "Don't Save" - system font size
+    glColor3f(1.0f, 1.0f, 1.0f);
+    drawText("Don't Save", btn2X + buttonWidth * 0.5f - 45.0f, buttonY + buttonHeight * 0.5f - 10.0f, 1.3f);
+    
+    // Button 3: Cancel
+    float btn3X = btn2X + buttonWidth + buttonSpacing;
+    glColor4f(0.4f, 0.4f, 0.4f, 1.0f);
+    if (closeDialogChoice_ == CloseDialogChoice::Cancel) {
+        glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
+    }
+    glBegin(GL_QUADS);
+    glVertex2f(btn3X, buttonY);
+    glVertex2f(btn3X + buttonWidth, buttonY);
+    glVertex2f(btn3X + buttonWidth, buttonY + buttonHeight);
+    glVertex2f(btn3X, buttonY + buttonHeight);
+    glEnd();
+    glColor3f(0.95f, 0.95f, 0.95f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(btn3X, buttonY);
+    glVertex2f(btn3X + buttonWidth, buttonY);
+    glVertex2f(btn3X + buttonWidth, buttonY + buttonHeight);
+    glVertex2f(btn3X, buttonY + buttonHeight);
+    glEnd();
+    // Button text: "Cancel" - system font size
+    glColor3f(1.0f, 1.0f, 1.0f);
+    drawText("Cancel", btn3X + buttonWidth * 0.5f - 30.0f, buttonY + buttonHeight * 0.5f - 10.0f, 1.3f);
+    
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+}
+
+void Application::handleCloseDialogClick(double mouseX, double mouseY, int width, int height) {
+    int buttonIndex = hitTestCloseDialogButton(mouseX, mouseY, width, height);
+    if (buttonIndex >= 0) {
+        if (buttonIndex == 0) {
+            closeDialogChoice_ = CloseDialogChoice::Save;
+        } else if (buttonIndex == 1) {
+            closeDialogChoice_ = CloseDialogChoice::CloseWithoutSave;
+        } else if (buttonIndex == 2) {
+            closeDialogChoice_ = CloseDialogChoice::Cancel;
+        }
+        processCloseDialogChoice();
+    }
+}
+
+int Application::hitTestCloseDialogButton(double mouseX, double mouseY, int width, int height) const {
+    if (!showCloseDialog_) return -1;
+    
+    // Convert mouse coordinates from window coordinates (top-left origin)
+    // to OpenGL coordinates (bottom-left origin)
+    double glMouseY = static_cast<double>(height) - mouseY;
+    
+    // Button dimensions (same as in renderCloseDialog)
+    const float buttonWidth = 140.0f;
+    const float buttonHeight = 45.0f;
+    const float buttonSpacing = 20.0f;
+    const float buttonY = 30.0f;
+    const float totalButtonsWidth = buttonWidth * 3.0f + buttonSpacing * 2.0f;
+    const float buttonStartX = (static_cast<float>(width) - totalButtonsWidth) * 0.5f;
+    
+    // Check each button
+    for (int i = 0; i < 3; ++i) {
+        float btnX = buttonStartX + static_cast<float>(i) * (buttonWidth + buttonSpacing);
+        if (mouseX >= btnX && mouseX <= btnX + buttonWidth &&
+            glMouseY >= buttonY && glMouseY <= buttonY + buttonHeight) {
+            return i;
+        }
+    }
+    
+    return -1;
+}
+
+void Application::processCloseDialogChoice() {
+    if (closeDialogChoice_ == CloseDialogChoice::Save) {
+        saveProject();
+        // Close all windows after saving
+        showCloseDialog_ = false;
+        closeDialogChoice_ = CloseDialogChoice::None;
+        // Remove close callback first to allow closing
+        if (windowTopBar_) {
+            glfwSetWindowCloseCallback(windowTopBar_->getHandle(), nullptr);
+            glfwSetWindowShouldClose(windowTopBar_->getHandle(), GLFW_TRUE);
+        }
+        if (windowLeftTools_) {
+            glfwSetWindowShouldClose(windowLeftTools_->getHandle(), GLFW_TRUE);
+        }
+        if (windowMainView_) {
+            glfwSetWindowShouldClose(windowMainView_->getHandle(), GLFW_TRUE);
+        }
+        if (windowRightPanel_) {
+            glfwSetWindowShouldClose(windowRightPanel_->getHandle(), GLFW_TRUE);
+        }
+        if (windowTerminal_) {
+            glfwSetWindowShouldClose(windowTerminal_->getHandle(), GLFW_TRUE);
+        }
+        // Force immediate processing by polling events
+        glfwPollEvents();
+    } else if (closeDialogChoice_ == CloseDialogChoice::CloseWithoutSave) {
+        // Close all windows without saving
+        showCloseDialog_ = false;
+        closeDialogChoice_ = CloseDialogChoice::None;
+        // Remove close callback first to allow closing
+        if (windowTopBar_) {
+            glfwSetWindowCloseCallback(windowTopBar_->getHandle(), nullptr);
+            glfwSetWindowShouldClose(windowTopBar_->getHandle(), GLFW_TRUE);
+        }
+        if (windowLeftTools_) {
+            glfwSetWindowShouldClose(windowLeftTools_->getHandle(), GLFW_TRUE);
+        }
+        if (windowMainView_) {
+            glfwSetWindowShouldClose(windowMainView_->getHandle(), GLFW_TRUE);
+        }
+        if (windowRightPanel_) {
+            glfwSetWindowShouldClose(windowRightPanel_->getHandle(), GLFW_TRUE);
+        }
+        if (windowTerminal_) {
+            glfwSetWindowShouldClose(windowTerminal_->getHandle(), GLFW_TRUE);
+        }
+        // Force immediate processing by polling events
+        glfwPollEvents();
+        // Also save settings immediately for all windows before they close
+        if (windowTopBar_) {
+            saveWindowSettings("TopBar", windowTopBar_->getHandle());
+        }
+        if (windowLeftTools_) {
+            saveWindowSettings("LeftTools", windowLeftTools_->getHandle());
+        }
+        if (windowMainView_) {
+            saveWindowSettings("MainView", windowMainView_->getHandle());
+        }
+        if (windowRightPanel_) {
+            saveWindowSettings("RightPanel", windowRightPanel_->getHandle());
+        }
+    } else if (closeDialogChoice_ == CloseDialogChoice::Cancel) {
+        // Cancel - just hide the dialog
+        showCloseDialog_ = false;
+        closeDialogChoice_ = CloseDialogChoice::None;
+        // Don't close any windows - user cancelled
+    }
+}
+
+void Application::saveProject() {
+    // Stub - not implemented yet
+    // TODO: Implement project saving functionality
+}
+
+void Application::drawText(const std::string& text, float x, float y, float scale) {
+    // Simple geometric representation of text using lines
+    // This is a basic implementation - each character is represented by simple patterns
+    const float charWidth = 8.0f * scale;
+    const float charHeight = 12.0f * scale;
+    float currentX = x;
+    
+    for (char c : text) {
+        if (c == ' ') {
+            currentX += charWidth * 0.5f;
+            continue;
+        }
+        
+        // Draw simple representation of character
+        // Using lines to form basic letter shapes
+        glLineWidth(1.5f * scale);
+        glBegin(GL_LINES);
+        
+        // Simple pattern for each character (very basic representation)
+        // For a proper implementation, you'd want a font bitmap or vector font
+        // This is just a placeholder that draws something visible
+        
+        if (c >= 'A' && c <= 'Z') {
+            // Draw a simple rectangle as placeholder for uppercase letters
+            float cx = currentX + charWidth * 0.5f;
+            float cy = y + charHeight * 0.5f;
+            float w = charWidth * 0.6f;
+            float h = charHeight * 0.6f;
+            
+            glVertex2f(cx - w * 0.5f, cy - h * 0.5f);
+            glVertex2f(cx + w * 0.5f, cy - h * 0.5f);
+            glVertex2f(cx + w * 0.5f, cy - h * 0.5f);
+            glVertex2f(cx + w * 0.5f, cy + h * 0.5f);
+            glVertex2f(cx + w * 0.5f, cy + h * 0.5f);
+            glVertex2f(cx - w * 0.5f, cy + h * 0.5f);
+            glVertex2f(cx - w * 0.5f, cy + h * 0.5f);
+            glVertex2f(cx - w * 0.5f, cy - h * 0.5f);
+        } else if (c >= 'a' && c <= 'z') {
+            // Draw a simple circle as placeholder for lowercase letters
+            float cx = currentX + charWidth * 0.5f;
+            float cy = y + charHeight * 0.5f;
+            float r = charWidth * 0.3f;
+            
+            for (int i = 0; i < 8; ++i) {
+                float angle1 = 2.0f * M_PI * i / 8.0f;
+                float angle2 = 2.0f * M_PI * (i + 1) / 8.0f;
+                glVertex2f(cx + r * cosf(angle1), cy + r * sinf(angle1));
+                glVertex2f(cx + r * cosf(angle2), cy + r * sinf(angle2));
+            }
+        } else if (c == '\'') {
+            // Apostrophe - small line
+            glVertex2f(currentX + charWidth * 0.5f, y + charHeight * 0.7f);
+            glVertex2f(currentX + charWidth * 0.5f, y + charHeight * 0.9f);
+        } else if (c == '?') {
+            // Question mark - simple pattern
+            float cx = currentX + charWidth * 0.5f;
+            float cy = y + charHeight * 0.5f;
+            glVertex2f(cx, cy);
+            glVertex2f(cx, cy + charHeight * 0.3f);
+        }
+        
+        glEnd();
+        currentX += charWidth;
+    }
+}
+
+void Application::initializeNanoGUI() {
+    // Initialize NanoGUI Screens for windows that need GUI
+    // Note: We manage GLFW ourselves, so we use Screen::initialize()
+    
+    if (windowTopBar_) {
+        glfwMakeContextCurrent(windowTopBar_->getHandle());
+        screenTopBar_ = std::make_unique<Screen>();
+        screenTopBar_->initialize(windowTopBar_->getHandle(), true);
+        screenTopBar_->set_visible(true);
+    }
+    
+    if (windowTerminal_) {
+        glfwMakeContextCurrent(windowTerminal_->getHandle());
+        screenTerminal_ = std::make_unique<Screen>();
+        screenTerminal_->initialize(windowTerminal_->getHandle(), true);
+        screenTerminal_->set_visible(true);
+        
+        // Create terminal UI
+        initializeTerminalNanoGUI();
+    }
+}
+
+void Application::shutdownNanoGUI() {
+    // Cleanup NanoGUI Screens
+    screenTerminal_.reset();
+    screenTopBar_.reset();
+}
+
+void Application::renderCloseDialogNanoGUI() {
+    if (!showCloseDialog_ || !screenTopBar_) return;
+    
+    // Create dialog window if it doesn't exist
+    if (!closeDialogWindow_) {
+        closeDialogWindow_ = new nanogui::Window(screenTopBar_.get(), "Close Application");
+        closeDialogWindow_->set_modal(true);
+        closeDialogWindow_->set_layout(new GroupLayout());
+        
+        new Label(closeDialogWindow_, "Do you want to save before closing?", "sans-bold");
+        
+        Widget* buttonPanel = new Widget(closeDialogWindow_);
+        buttonPanel->set_layout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 10));
+        
+        Button* saveBtn = new Button(buttonPanel, "Save");
+        saveBtn->set_callback([this]() {
+            closeDialogChoice_ = CloseDialogChoice::Save;
+            processCloseDialogChoice();
+            showCloseDialog_ = false;
+            if (closeDialogWindow_) {
+                closeDialogWindow_->dispose();
+                closeDialogWindow_ = nullptr;
+            }
+        });
+        
+        Button* dontSaveBtn = new Button(buttonPanel, "Don't Save");
+        dontSaveBtn->set_callback([this]() {
+            closeDialogChoice_ = CloseDialogChoice::CloseWithoutSave;
+            processCloseDialogChoice();
+            showCloseDialog_ = false;
+            if (closeDialogWindow_) {
+                closeDialogWindow_->dispose();
+                closeDialogWindow_ = nullptr;
+            }
+        });
+        
+        Button* cancelBtn = new Button(buttonPanel, "Cancel");
+        cancelBtn->set_callback([this]() {
+            closeDialogChoice_ = CloseDialogChoice::Cancel;
+            showCloseDialog_ = false;
+            if (closeDialogWindow_) {
+                closeDialogWindow_->dispose();
+                closeDialogWindow_ = nullptr;
+            }
+        });
+        
+        screenTopBar_->perform_layout();
+        closeDialogWindow_->center();
+        closeDialogWindow_->set_visible(true);
+        screenTopBar_->redraw(); // Force redraw to show dialog
+    }
+}
+
+void Application::renderUIEditor() {
+    // TODO: Migrate to NanoGUI
+    // Temporarily disabled for testing build
+    if (!showUIEditor_) return;
+    // ... ImGui code commented out ...
+    /*
+    // All ImGui code commented out for build test
+    ImGui::Begin("UI Editor", &showUIEditor_);
+    
+    // Window selector
+    if (ImGui::CollapsingHeader("Windows", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::Button("Top Bar")) {
+            selectedWindow_ = "TopBar";
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Left Tools")) {
+            selectedWindow_ = "LeftTools";
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Main View")) {
+            selectedWindow_ = "MainView";
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Right Panel")) {
+            selectedWindow_ = "RightPanel";
+        }
+    }
+    
+    // Edit selected window
+    if (!selectedWindow_.empty()) {
+        ImGui::Separator();
+        ImGui::Text("Editing: %s", selectedWindow_.c_str());
+        
+        WindowSettings settings = loadWindowSettings(selectedWindow_);
+        
+        int x = settings.x;
+        int y = settings.y;
+        int w = settings.width;
+        int h = settings.height;
+        bool maximized = settings.maximized;
+        
+        bool changed = false;
+        
+        if (ImGui::InputInt("X Position", &x)) {
+            settings.x = x;
+            changed = true;
+        }
+        if (ImGui::InputInt("Y Position", &y)) {
+            settings.y = y;
+            changed = true;
+        }
+        if (ImGui::InputInt("Width", &w)) {
+            if (w > 0) {
+                settings.width = w;
+                changed = true;
+            }
+        }
+        if (ImGui::InputInt("Height", &h)) {
+            if (h > 0) {
+                settings.height = h;
+                changed = true;
+            }
+        }
+        if (ImGui::Checkbox("Maximized", &maximized)) {
+            settings.maximized = maximized;
+            changed = true;
+        }
+        
+        if (changed) {
+            // Get target window first
+            GLFWwindow* targetWindow = nullptr;
+            if (selectedWindow_ == "TopBar" && windowTopBar_) {
+                targetWindow = windowTopBar_->getHandle();
+            } else if (selectedWindow_ == "LeftTools" && windowLeftTools_) {
+                targetWindow = windowLeftTools_->getHandle();
+            } else if (selectedWindow_ == "MainView" && windowMainView_) {
+                targetWindow = windowMainView_->getHandle();
+            } else if (selectedWindow_ == "RightPanel" && windowRightPanel_) {
+                targetWindow = windowRightPanel_->getHandle();
+            }
+            
+            if (targetWindow) {
+                // Save settings using windowConfig directly
+                if (windowConfig_) {
+                    windowConfig_->saveWindowSettings(selectedWindow_, settings);
+                }
+                // Apply settings to window
+                applyWindowSettings(settings, targetWindow);
+            }
+        }
+    }
+    
+    // Text editor section
+    if (ImGui::CollapsingHeader("Text Editor")) {
+        static char textBuffer[1024] = "";
+        ImGui::InputTextMultiline("Edit Text", textBuffer, sizeof(textBuffer), ImVec2(0, 100));
+        if (ImGui::Button("Apply Text")) {
+            // TODO: Apply text to selected element
+            ImGui::SetTooltip("Text editing will be implemented");
+        }
+    }
+    
+    // Info
+    ImGui::Separator();
+    ImGui::Text("Press F12 to toggle this editor");
+    ImGui::Text("Changes are saved automatically");
+    
+    ImGui::End();
+    */
+    // Function body temporarily empty for build test
+}
+
+void Application::initializeTerminalNanoGUI() {
+    if (!screenTerminal_) return;
+    
+    // Create full-screen terminal window (no title bar)
+    terminalWindow_ = new nanogui::Window(screenTerminal_.get(), "");
+    terminalWindow_->set_position(Vector2i(0, 0));
+    terminalWindow_->set_layout(new BoxLayout(Orientation::Vertical, Alignment::Fill, 0, 0));
+    
+    int width, height;
+    glfwGetFramebufferSize(windowTerminal_->getHandle(), &width, &height);
+    terminalWindow_->set_fixed_size(Vector2i(width, height));
+    
+    // Scroll panel for history (takes most of the space)
+    terminalScrollPanel_ = new VScrollPanel(terminalWindow_);
+    terminalScrollPanel_->set_fixed_height(height - 40); // Leave space for input
+    
+    terminalHistoryWidget_ = new Widget(terminalScrollPanel_);
+    terminalHistoryWidget_->set_layout(new GroupLayout());
+    
+    // Input box at bottom
+    terminalInputBox_ = new TextBox(terminalWindow_, "> ");
+    terminalInputBox_->set_editable(true);
+    terminalInputBox_->set_fixed_height(30);
+    terminalInputBox_->set_callback([this](const std::string& value) -> bool {
+        // Enter pressed - execute command
+        std::string cmd = terminalInputBox_->value();
+        if (!cmd.empty() && cmd != "> ") {
+            // Remove "> " prefix if present
+            if (cmd.size() > 2 && cmd.substr(0, 2) == "> ") {
+                cmd = cmd.substr(2);
+            }
+            terminalHistory_.push_back("> " + cmd);
+            executeCommand(cmd);
+            terminalInputBox_->set_value("> ");
+            updateTerminalHistory();
+        }
+        return true;
+    });
+    
+    screenTerminal_->perform_layout();
+    updateTerminalHistory();
+    
+    // Setup NanoGUI event callbacks for terminal window
+    setupTerminalCallbacks();
+    
+    // Also setup callbacks for TopBar
+    if (windowTopBar_ && screenTopBar_) {
+        setupTopBarCallbacks();
+    }
+}
+
+void Application::updateTerminalHistory() {
+    if (!terminalHistoryWidget_ || !terminalScrollPanel_) return;
+    
+    // Clear existing labels by recreating the widget
+    // In NanoGUI, widgets are managed by parent, so we recreate the history widget
+    Widget* oldWidget = terminalHistoryWidget_;
+    terminalHistoryWidget_ = new Widget(terminalScrollPanel_);
+    terminalHistoryWidget_->set_layout(new GroupLayout());
+    
+    // Add history lines
+    for (const auto& line : terminalHistory_) {
+        new Label(terminalHistoryWidget_, line);
+    }
+    
+    // Old widget will be automatically cleaned up when parent is destroyed
+    // For now, just hide it
+    oldWidget->set_visible(false);
+    
+    if (terminalScrollPanel_) {
+        terminalScrollPanel_->set_scroll(1.0f); // Scroll to bottom
+    }
+    
+    if (screenTerminal_) {
+        screenTerminal_->perform_layout();
+    }
+}
+
+void Application::setupTerminalCallbacks() {
+    if (!windowTerminal_ || !screenTerminal_) return;
+    
+    GLFWwindow* window = windowTerminal_->getHandle();
+    
+    // Setup NanoGUI event callbacks
+    glfwSetCursorPosCallback(window, [](GLFWwindow* w, double x, double y) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTerminal_) {
+            app->screenTerminal_->cursor_pos_callback_event(x, y);
+        }
+    });
+    
+    glfwSetMouseButtonCallback(window, [](GLFWwindow* w, int button, int action, int mods) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTerminal_) {
+            app->screenTerminal_->mouse_button_callback_event(button, action, mods);
+        }
+    });
+    
+    glfwSetKeyCallback(window, [](GLFWwindow* w, int key, int scancode, int action, int mods) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTerminal_) {
+            app->screenTerminal_->key_callback_event(key, scancode, action, mods);
+        }
+    });
+    
+    glfwSetCharCallback(window, [](GLFWwindow* w, unsigned int codepoint) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTerminal_) {
+            app->screenTerminal_->char_callback_event(codepoint);
+        }
+    });
+    
+    glfwSetScrollCallback(window, [](GLFWwindow* w, double x, double y) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTerminal_) {
+            app->screenTerminal_->scroll_callback_event(x, y);
+        }
+    });
+    
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow* w, int width, int height) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTerminal_) {
+            app->screenTerminal_->resize_callback_event(width, height);
+            // Update terminal window size
+            if (app->terminalWindow_) {
+                app->terminalWindow_->set_fixed_size(Vector2i(width, height));
+                if (app->terminalScrollPanel_) {
+                    app->terminalScrollPanel_->set_fixed_height(height - 40);
+                }
+                app->screenTerminal_->perform_layout();
+            }
+        }
+    });
+}
+
+void Application::setupTopBarCallbacks() {
+    if (!windowTopBar_ || !screenTopBar_) return;
+    
+    GLFWwindow* window = windowTopBar_->getHandle();
+    
+    // Setup NanoGUI event callbacks for TopBar
+    glfwSetCursorPosCallback(window, [](GLFWwindow* w, double x, double y) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTopBar_) {
+            app->screenTopBar_->cursor_pos_callback_event(x, y);
+        }
+    });
+    
+    glfwSetMouseButtonCallback(window, [](GLFWwindow* w, int button, int action, int mods) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTopBar_) {
+            app->screenTopBar_->mouse_button_callback_event(button, action, mods);
+        }
+    });
+    
+    glfwSetCharCallback(window, [](GLFWwindow* w, unsigned int codepoint) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTopBar_) {
+            app->screenTopBar_->char_callback_event(codepoint);
+        }
+    });
+    
+    glfwSetScrollCallback(window, [](GLFWwindow* w, double x, double y) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTopBar_) {
+            app->screenTopBar_->scroll_callback_event(x, y);
+        }
+    });
+    
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow* w, int width, int height) {
+        Application* app = static_cast<Application*>(glfwGetWindowUserPointer(w));
+        if (app && app->screenTopBar_) {
+            app->screenTopBar_->resize_callback_event(width, height);
+        }
+    });
+}
+
+void Application::renderTerminal(Window* window) {
+    // Terminal rendering is now handled by NanoGUI Screen
+    // This function is called before NanoGUI rendering
+    // Just clear the screen - NanoGUI will draw on top
+    int width, height;
+    glfwGetFramebufferSize(window->getHandle(), &width, &height);
+    
+    glViewport(0, 0, width, height);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    // Terminal UI is rendered by NanoGUI in the main loop
+}
+
+void Application::executeCommand(const std::string& command) {
+    // Parse and execute command
+    std::string cmd = command;
+    std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
+    
+    // Remove leading/trailing whitespace
+    cmd.erase(0, cmd.find_first_not_of(" \t\n\r"));
+    cmd.erase(cmd.find_last_not_of(" \t\n\r") + 1);
+    
+    if (cmd.empty()) {
+        return;
+    }
+    
+    // Simple command parser
+    std::istringstream iss(cmd);
+    std::string commandName;
+    iss >> commandName;
+    
+    if (commandName == "help" || commandName == "?") {
+        terminalHistory_.push_back("Available commands:");
+        terminalHistory_.push_back("  help, ?          - Show this help");
+        terminalHistory_.push_back("  clear            - Clear terminal history");
+        terminalHistory_.push_back("  list             - List all solutions");
+        terminalHistory_.push_back("  create <type>    - Create a new solution");
+        terminalHistory_.push_back("  set <id> <driver> <value> - Set driver value");
+        terminalHistory_.push_back("  get <id>         - Get solution info");
+        terminalHistory_.push_back("  execute <id>     - Execute solution");
+    } else if (commandName == "clear") {
+        terminalHistory_.clear();
+        updateTerminalHistory();
+    } else if (commandName == "list") {
+        if (kernel_) {
+            auto allIDs = kernel_->getAllSolutionIDs();
+            terminalHistory_.push_back("Solutions (" + std::to_string(allIDs.size()) + "):");
+            for (const auto& id : allIDs) {
+                try {
+                    auto solution = kernel_->getSolution(id);
+                    if (solution) {
+                        terminalHistory_.push_back("  " + std::to_string(id) + ": " + solution->getType());
+                    }
+                } catch (...) {
+                    terminalHistory_.push_back("  " + std::to_string(id) + ": <error>");
+                }
+            }
+        } else {
+            terminalHistory_.push_back("Error: Kernel not initialized");
+        }
+    } else if (commandName == "create") {
+        std::string type;
+        iss >> type;
+        if (!type.empty() && kernel_) {
+            try {
+                SolutionID id = kernel_->createSolution(type);
+                terminalHistory_.push_back("Created solution: " + std::to_string(id) + " (" + type + ")");
+            } catch (const std::exception& e) {
+                terminalHistory_.push_back("Error: " + std::string(e.what()));
+            }
+        } else {
+            terminalHistory_.push_back("Usage: create <solution_type>");
+        }
+    } else if (commandName == "set") {
+        std::string idStr, driver, valueStr;
+        iss >> idStr >> driver >> valueStr;
+        if (!idStr.empty() && !driver.empty() && !valueStr.empty() && kernel_) {
+            try {
+                SolutionID id = std::stoi(idStr);
+                double value = std::stod(valueStr);
+                kernel_->setDriver(id, driver, value);
+                terminalHistory_.push_back("Set driver '" + driver + "' = " + valueStr + " for solution " + idStr);
+            } catch (const std::exception& e) {
+                terminalHistory_.push_back("Error: " + std::string(e.what()));
+            }
+        } else {
+            terminalHistory_.push_back("Usage: set <solution_id> <driver_name> <value>");
+        }
+    } else if (commandName == "get") {
+        std::string idStr;
+        iss >> idStr;
+        if (!idStr.empty() && kernel_) {
+            try {
+                SolutionID id = std::stoi(idStr);
+                auto solution = kernel_->getSolution(id);
+                if (solution) {
+                    terminalHistory_.push_back("Solution " + idStr + ":");
+                    terminalHistory_.push_back("  Type: " + solution->getType());
+                    terminalHistory_.push_back("  Dirty: " + std::string(solution->isDirty() ? "yes" : "no"));
+                } else {
+                    terminalHistory_.push_back("Solution " + idStr + " not found");
+                }
+            } catch (const std::exception& e) {
+                terminalHistory_.push_back("Error: " + std::string(e.what()));
+            }
+        } else {
+            terminalHistory_.push_back("Usage: get <solution_id>");
+        }
+    } else if (commandName == "execute") {
+        std::string idStr;
+        iss >> idStr;
+        if (!idStr.empty() && kernel_) {
+            try {
+                SolutionID id = std::stoi(idStr);
+                kernel_->execute(id);
+                terminalHistory_.push_back("Executed solution " + idStr);
+            } catch (const std::exception& e) {
+                terminalHistory_.push_back("Error: " + std::string(e.what()));
+            }
+        } else {
+            terminalHistory_.push_back("Usage: execute <solution_id>");
+        }
+    } else {
+        terminalHistory_.push_back("Unknown command: '" + command + "'");
+        terminalHistory_.push_back("Type 'help' for available commands");
     }
 }
 
