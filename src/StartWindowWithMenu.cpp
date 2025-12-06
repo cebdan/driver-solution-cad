@@ -1,4 +1,4 @@
-#include "../include/MainWindow.h"
+#include "../include/StartWindow.h"
 #include <xtd/xtd>
 #include <iostream>
 
@@ -19,7 +19,7 @@ private:
     std::function<void()> on_exit_;
     
 public:
-    MainWindowWithMenu() {
+    StartWindowWithMenu() {
         setupForm();
         setupMenuBar();
     }
@@ -182,7 +182,7 @@ auto main() -> int {
     xtd::forms::application::enable_visual_styles();
     xtd::forms::application::set_compatible_text_rendering_default(false);
     
-    MainWindowWithMenu mainWindow;
+    StartWindowWithMenu mainWindow;
     
     mainWindow.setOnNew2DDocument([]() {
         xtd::forms::message_box::show("New 2D Document created!", "CAD System");

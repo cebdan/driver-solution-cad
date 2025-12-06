@@ -1,5 +1,5 @@
-#ifndef MAIN_WINDOW_H
-#define MAIN_WINDOW_H
+#ifndef START_WINDOW_H
+#define START_WINDOW_H
 
 #include "XTD.h"
 #include "Document2D.h"
@@ -9,10 +9,10 @@
 #include <memory>
 #include <functional>
 
-class MainWindow {
+class StartWindow {
 public:
-    MainWindow();
-    virtual ~MainWindow();
+    StartWindow();
+    virtual ~StartWindow();
     
     void show();
     void hide();
@@ -78,5 +78,5 @@ private:
     bool visible_;
 };
 
-#endif // MAIN_WINDOW_H
+#endif // START_WINDOW_H
 

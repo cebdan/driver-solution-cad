@@ -1,17 +1,17 @@
-#include "../include/MainWindow.h"
+#include "../include/StartWindow.h"
 #include "../include/XTD.h"
 #include "../include/Document2D.h"
 #include "../include/CS.h"
 #include <xtd/xtd>
 
-MainWindow::MainWindow() : window_(nullptr), visible_(false), title_("CAD System") {
+StartWindow::StartWindow() : window_(nullptr), visible_(false), title_("CAD System") {
     setupUI();
 }
 
-MainWindow::~MainWindow() {
+StartWindow::~StartWindow() {
 }
 
-void MainWindow::setupUI() {
+void StartWindow::setupUI() {
     // Create main form
     main_form_ = new xtd::forms::form();
     main_form_->text(title_);
@@ -22,40 +22,40 @@ void MainWindow::setupUI() {
     setupMenuBar();
 }
 
-void MainWindow::show() {
+void StartWindow::show() {
     if (main_form_) {
         main_form_->show();
         visible_ = true;
     }
 }
 
-void MainWindow::hide() {
+void StartWindow::hide() {
     if (main_form_) {
         main_form_->hide();
         visible_ = false;
     }
 }
 
-bool MainWindow::isVisible() const {
+bool StartWindow::isVisible() const {
     return main_form_ && main_form_->visible();
 }
 
-void MainWindow::setTitle(const std::string& title) {
+void StartWindow::setTitle(const std::string& title) {
     title_ = title;
     if (main_form_) {
         main_form_->text(title);
     }
 }
 
-std::string MainWindow::getTitle() const {
+std::string StartWindow::getTitle() const {
     return title_;
 }
 
-void MainWindow::createMenuBar() {
+void StartWindow::createMenuBar() {
     setupMenuBar();
 }
 
-void MainWindow::setupMenuBar() {
+void StartWindow::setupMenuBar() {
     if (!main_form_) return;
     
     // Create menu bar
@@ -127,16 +127,16 @@ void MainWindow::setupMenuBar() {
     main_form_->menu(*menu_bar_);
 }
 
-void MainWindow::addMenuItem(const std::string& menu_name, const std::string& item_name, std::function<void()> callback) {
+void StartWindow::addMenuItem(const std::string& menu_name, const std::string& item_name, std::function<void()> callback) {
     // Add menu item implementation
     // This would use xtd::forms::menu_item
 }
 
-void MainWindow::createNew2DDocument() {
+void StartWindow::createNew2DDocument() {
     onNew2DDocument();
 }
 
-void MainWindow::onNew2DDocument() {
+void StartWindow::onNew2DDocument() {
     // Create new 2D document
     current_document_ = std::make_unique<Document2D>("New 2D Document");
     
@@ -150,11 +150,11 @@ void MainWindow::onNew2DDocument() {
     }
 }
 
-void MainWindow::openDocument() {
+void StartWindow::openDocument() {
     onOpenDocument();
 }
 
-void MainWindow::onOpenDocument() {
+void StartWindow::onOpenDocument() {
     // Open document dialog would be implemented here
     // For now, just a placeholder
     if (on_open_document_) {
@@ -162,11 +162,11 @@ void MainWindow::onOpenDocument() {
     }
 }
 
-void MainWindow::saveDocument() {
+void StartWindow::saveDocument() {
     onSaveDocument();
 }
 
-void MainWindow::onSaveDocument() {
+void StartWindow::onSaveDocument() {
     if (current_document_) {
         std::string path = current_document_->getPath();
         if (path.empty()) {
@@ -181,11 +181,11 @@ void MainWindow::onSaveDocument() {
     }
 }
 
-void MainWindow::closeDocument() {
+void StartWindow::closeDocument() {
     onCloseDocument();
 }
 
-void MainWindow::onCloseDocument() {
+void StartWindow::onCloseDocument() {
     if (current_document_) {
         current_document_->close();
         current_document_.reset();
@@ -196,7 +196,7 @@ void MainWindow::onCloseDocument() {
     }
 }
 
-void MainWindow::onExit() {
+void StartWindow::onExit() {
     if (on_exit_) {
         on_exit_();
     } else {
@@ -205,27 +205,27 @@ void MainWindow::onExit() {
     }
 }
 
-void MainWindow::setOnNew2DDocument(std::function<void()> callback) {
+void StartWindow::setOnNew2DDocument(std::function<void()> callback) {
     on_new_2d_document_ = callback;
 }
 
-void MainWindow::setOnOpenDocument(std::function<void()> callback) {
+void StartWindow::setOnOpenDocument(std::function<void()> callback) {
     on_open_document_ = callback;
 }
 
-void MainWindow::setOnSaveDocument(std::function<void()> callback) {
+void StartWindow::setOnSaveDocument(std::function<void()> callback) {
     on_save_document_ = callback;
 }
 
-void MainWindow::setOnCloseDocument(std::function<void()> callback) {
+void StartWindow::setOnCloseDocument(std::function<void()> callback) {
     on_close_document_ = callback;
 }
 
-void MainWindow::setOnExit(std::function<void()> callback) {
+void StartWindow::setOnExit(std::function<void()> callback) {
     on_exit_ = callback;
 }
 
-void MainWindow::update() {
+void StartWindow::update() {
     // Update window if needed
 }
 

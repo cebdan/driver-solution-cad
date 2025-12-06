@@ -1,4 +1,4 @@
-#include "../include/MainWindow.h"
+#include "../include/StartWindow.h"
 #include <xtd/xtd>
 #include <iostream>
 
@@ -10,7 +10,7 @@ auto main() -> int {
         xtd::forms::application::set_compatible_text_rendering_default(false);
         
         // Create main window
-        MainWindow mainWindow;
+        StartWindow mainWindow;
         mainWindow.setTitle("CAD System - Main Window");
         
         // Setup event handlers

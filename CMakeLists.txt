@@ -38,7 +38,7 @@ set(SOURCES
     src/Solution.cpp
     src/SolutionDocument.cpp
     src/Document2D.cpp
-    src/MainWindow.cpp
+    src/StartWindow.cpp
     src/Value.cpp
     src/CS.cpp
     src/2D_point.cpp
@@ -47,6 +47,7 @@ set(SOURCES
     src/XTD.cpp
     src/OpenGLRenderer.cpp
     src/DataExchange.cpp
+    src/close_app.cpp
 )
 
 # Header files
@@ -56,7 +57,7 @@ set(HEADERS
     include/Solution.h
     include/SolutionDocument.h
     include/Document2D.h
-    include/MainWindow.h
+    include/StartWindow.h
     include/Value.h
     include/CS.h
     include/2D_point.h
@@ -65,15 +66,16 @@ set(HEADERS
     include/XTD.h
     include/OpenGLRenderer.h
     include/DataExchange.h
+    include/close_app.h
 )
 
-# Create library (without MainWindow for now to avoid compilation errors)
-set(SOURCES_WITHOUT_MAINWINDOW ${SOURCES})
-list(REMOVE_ITEM SOURCES_WITHOUT_MAINWINDOW src/MainWindow.cpp)
-set(HEADERS_WITHOUT_MAINWINDOW ${HEADERS})
-list(REMOVE_ITEM HEADERS_WITHOUT_MAINWINDOW include/MainWindow.h)
+# Create library (without StartWindow for now to avoid compilation errors)
+set(SOURCES_WITHOUT_STARTWINDOW ${SOURCES})
+list(REMOVE_ITEM SOURCES_WITHOUT_STARTWINDOW src/StartWindow.cpp)
+set(HEADERS_WITHOUT_STARTWINDOW ${HEADERS})
+list(REMOVE_ITEM HEADERS_WITHOUT_STARTWINDOW include/StartWindow.h)
 
-add_library(driver_solution_cad STATIC ${SOURCES_WITHOUT_MAINWINDOW} ${HEADERS_WITHOUT_MAINWINDOW})
+add_library(driver_solution_cad STATIC ${SOURCES_WITHOUT_STARTWINDOW} ${HEADERS_WITHOUT_STARTWINDOW})
 
 # Link xtd if found
 if(xtd_FOUND)
@@ -98,7 +100,13 @@ target_link_libraries(demo_main_menu PRIVATE driver_solution_cad)
 
 # Simple GUI application (requires xtd)
 if(xtd_FOUND)
-    add_executable(simple_gui examples/simple_gui_working.cpp)
+    if(APPLE)
+        # On macOS, compile with Objective-C++ support for window utilities
+        add_executable(simple_gui examples/simple_gui_working.cpp src/close_app.cpp src/macos_window_utils.mm)
+        set_source_files_properties(src/macos_window_utils.mm PROPERTIES COMPILE_FLAGS "-x objective-c++")
+    else()
+        add_executable(simple_gui examples/simple_gui_working.cpp src/close_app.cpp)
+    endif()
     if(TARGET xtd::xtd)
         target_link_libraries(simple_gui PRIVATE xtd::xtd)
     elseif(TARGET xtd)
