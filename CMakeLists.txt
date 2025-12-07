@@ -128,6 +128,126 @@ if(xtd_FOUND)
     endif()
 endif()
 
+# ImGui + SDL2 GUI application (alternative to xtd)
+find_package(SDL2 QUIET)
+if(NOT SDL2_FOUND)
+    # Try to find SDL2 using pkg-config or manual paths
+    find_path(SDL2_INCLUDE_DIR SDL.h
+        PATHS
+        /usr/local/include/SDL2
+        /usr/include/SDL2
+        /opt/homebrew/include/SDL2
+    )
+    find_library(SDL2_LIBRARY SDL2
+        PATHS
+        /usr/local/lib
+        /usr/lib
+        /opt/homebrew/lib
+    )
+    if(SDL2_INCLUDE_DIR AND SDL2_LIBRARY)
+        set(SDL2_FOUND TRUE)
+    endif()
+endif()
+
+if(SDL2_FOUND)
+    message(STATUS "Found SDL2")
+    
+    # ImGui is header-only, we'll include it directly
+    # Download or include ImGui sources
+    set(IMGUI_DIR "${CMAKE_SOURCE_DIR}/third_party/imgui" CACHE PATH "ImGui directory")
+    
+    if(EXISTS "${IMGUI_DIR}/imgui.h")
+        message(STATUS "Found ImGui in: ${IMGUI_DIR}")
+        
+        # ImGui + SDL2 application
+        if(APPLE)
+            add_executable(simple_gui_imgui 
+                examples/simple_gui_imgui.cpp 
+                src/imgui_macos_utils.mm
+                ${IMGUI_DIR}/imgui.cpp
+                ${IMGUI_DIR}/imgui_demo.cpp
+                ${IMGUI_DIR}/imgui_draw.cpp
+                ${IMGUI_DIR}/imgui_tables.cpp
+                ${IMGUI_DIR}/imgui_widgets.cpp
+                ${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp
+                ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+            )
+            set_source_files_properties(src/imgui_macos_utils.mm PROPERTIES COMPILE_FLAGS "-x objective-c++")
+        else()
+            add_executable(simple_gui_imgui 
+                examples/simple_gui_imgui.cpp 
+                src/close_app.cpp
+                src/imgui_macos_utils.mm
+                ${IMGUI_DIR}/imgui.cpp
+                ${IMGUI_DIR}/imgui_demo.cpp
+                ${IMGUI_DIR}/imgui_draw.cpp
+                ${IMGUI_DIR}/imgui_tables.cpp
+                ${IMGUI_DIR}/imgui_widgets.cpp
+                ${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp
+                ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+            )
+        endif()
+        
+        target_include_directories(simple_gui_imgui PRIVATE 
+            ${SDL2_INCLUDE_DIR}
+            ${IMGUI_DIR}
+            ${IMGUI_DIR}/backends
+        )
+        
+        # Find SDL2 properly using pkg-config or manual
+        find_program(PKG_CONFIG_EXECUTABLE pkg-config)
+        if(PKG_CONFIG_EXECUTABLE)
+            execute_process(
+                COMMAND ${PKG_CONFIG_EXECUTABLE} --libs sdl2
+                OUTPUT_VARIABLE SDL2_LINK_LIBS
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+        endif()
+        
+        if(SDL2_LINK_LIBS)
+            target_link_libraries(simple_gui_imgui PRIVATE ${SDL2_LINK_LIBS})
+        elseif(TARGET SDL2::SDL2)
+            target_link_libraries(simple_gui_imgui PRIVATE SDL2::SDL2)
+        elseif(SDL2_LIBRARY)
+            target_link_libraries(simple_gui_imgui PRIVATE ${SDL2_LIBRARY})
+        else()
+            # Fallback: try common locations
+            find_library(SDL2_LIB SDL2
+                PATHS
+                /usr/local/lib
+                /opt/homebrew/lib
+                /usr/lib
+            )
+            if(SDL2_LIB)
+                target_link_libraries(simple_gui_imgui PRIVATE ${SDL2_LIB})
+            else()
+                target_link_libraries(simple_gui_imgui PRIVATE SDL2)
+            endif()
+        endif()
+        
+        target_link_libraries(simple_gui_imgui PRIVATE ${CMAKE_DL_LIBS})
+        
+        if(APPLE)
+            target_link_libraries(simple_gui_imgui PRIVATE 
+                "-framework OpenGL"
+                "-framework Cocoa"
+            )
+            set_target_properties(simple_gui_imgui PROPERTIES
+                MACOSX_BUNDLE TRUE
+                MACOSX_BUNDLE_GUI_IDENTIFIER "com.cadsystem.simpleguiimgui"
+            )
+        else()
+            find_package(OpenGL REQUIRED)
+            target_link_libraries(simple_gui_imgui PRIVATE OpenGL::GL)
+        endif()
+        
+    else()
+        message(WARNING "ImGui not found in ${IMGUI_DIR}. Please download ImGui to third_party/imgui")
+    endif()
+else()
+    message(STATUS "SDL2 not found. ImGui GUI application will not be built.")
+endif()
+
 # Installation (optional)
 install(TARGETS driver_solution_cad
     LIBRARY DESTINATION lib
