@@ -63,17 +63,15 @@ CMAKE_BINARY_DIR = /Users/user/Documents/driver-solution-cad/build
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/driver_solution_cad.dir/all
-all: CMakeFiles/demo_terminal.dir/all
-all: CMakeFiles/demo_main_menu.dir/all
-all: CMakeFiles/simple_gui.dir/all
+all: CMakeFiles/cad_core.dir/all
+all: CMakeFiles/test_core.dir/all
+all: CMakeFiles/example_chain.dir/all
 .PHONY : all
 
 # The main recursive "codegen" target.
-codegen: CMakeFiles/driver_solution_cad.dir/codegen
-codegen: CMakeFiles/demo_terminal.dir/codegen
-codegen: CMakeFiles/demo_main_menu.dir/codegen
-codegen: CMakeFiles/simple_gui.dir/codegen
+codegen: CMakeFiles/cad_core.dir/codegen
+codegen: CMakeFiles/test_core.dir/codegen
+codegen: CMakeFiles/example_chain.dir/codegen
 .PHONY : codegen
 
 # The main recursive "preinstall" target.
@@ -81,139 +79,106 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/driver_solution_cad.dir/clean
-clean: CMakeFiles/demo_terminal.dir/clean
-clean: CMakeFiles/demo_main_menu.dir/clean
-clean: CMakeFiles/simple_gui.dir/clean
+clean: CMakeFiles/cad_core.dir/clean
+clean: CMakeFiles/test_core.dir/clean
+clean: CMakeFiles/example_chain.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/driver_solution_cad.dir
+# Target rules for target CMakeFiles/cad_core.dir
 
 # All Build rule for target.
-CMakeFiles/driver_solution_cad.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 "Built target driver_solution_cad"
-.PHONY : CMakeFiles/driver_solution_cad.dir/all
+CMakeFiles/cad_core.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=1,2,3,4,5,6 "Built target cad_core"
+.PHONY : CMakeFiles/cad_core.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/driver_solution_cad.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 15
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/driver_solution_cad.dir/all
+CMakeFiles/cad_core.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 6
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/cad_core.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 0
-.PHONY : CMakeFiles/driver_solution_cad.dir/rule
+.PHONY : CMakeFiles/cad_core.dir/rule
 
 # Convenience name for target.
-driver_solution_cad: CMakeFiles/driver_solution_cad.dir/rule
-.PHONY : driver_solution_cad
+cad_core: CMakeFiles/cad_core.dir/rule
+.PHONY : cad_core
 
 # codegen rule for target.
-CMakeFiles/driver_solution_cad.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 "Finished codegen for target driver_solution_cad"
-.PHONY : CMakeFiles/driver_solution_cad.dir/codegen
+CMakeFiles/cad_core.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=1,2,3,4,5,6 "Finished codegen for target cad_core"
+.PHONY : CMakeFiles/cad_core.dir/codegen
 
 # clean rule for target.
-CMakeFiles/driver_solution_cad.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/clean
-.PHONY : CMakeFiles/driver_solution_cad.dir/clean
+CMakeFiles/cad_core.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/clean
+.PHONY : CMakeFiles/cad_core.dir/clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/demo_terminal.dir
+# Target rules for target CMakeFiles/test_core.dir
 
 # All Build rule for target.
-CMakeFiles/demo_terminal.dir/all: CMakeFiles/driver_solution_cad.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_terminal.dir/build.make CMakeFiles/demo_terminal.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_terminal.dir/build.make CMakeFiles/demo_terminal.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=3,4 "Built target demo_terminal"
-.PHONY : CMakeFiles/demo_terminal.dir/all
+CMakeFiles/test_core.dir/all: CMakeFiles/cad_core.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_core.dir/build.make CMakeFiles/test_core.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_core.dir/build.make CMakeFiles/test_core.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=9,10 "Built target test_core"
+.PHONY : CMakeFiles/test_core.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/demo_terminal.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 17
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/demo_terminal.dir/all
+CMakeFiles/test_core.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 8
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/test_core.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 0
-.PHONY : CMakeFiles/demo_terminal.dir/rule
+.PHONY : CMakeFiles/test_core.dir/rule
 
 # Convenience name for target.
-demo_terminal: CMakeFiles/demo_terminal.dir/rule
-.PHONY : demo_terminal
+test_core: CMakeFiles/test_core.dir/rule
+.PHONY : test_core
 
 # codegen rule for target.
-CMakeFiles/demo_terminal.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_terminal.dir/build.make CMakeFiles/demo_terminal.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=3,4 "Finished codegen for target demo_terminal"
-.PHONY : CMakeFiles/demo_terminal.dir/codegen
+CMakeFiles/test_core.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_core.dir/build.make CMakeFiles/test_core.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=9,10 "Finished codegen for target test_core"
+.PHONY : CMakeFiles/test_core.dir/codegen
 
 # clean rule for target.
-CMakeFiles/demo_terminal.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_terminal.dir/build.make CMakeFiles/demo_terminal.dir/clean
-.PHONY : CMakeFiles/demo_terminal.dir/clean
+CMakeFiles/test_core.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_core.dir/build.make CMakeFiles/test_core.dir/clean
+.PHONY : CMakeFiles/test_core.dir/clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/demo_main_menu.dir
+# Target rules for target CMakeFiles/example_chain.dir
 
 # All Build rule for target.
-CMakeFiles/demo_main_menu.dir/all: CMakeFiles/driver_solution_cad.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_main_menu.dir/build.make CMakeFiles/demo_main_menu.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_main_menu.dir/build.make CMakeFiles/demo_main_menu.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=1,2 "Built target demo_main_menu"
-.PHONY : CMakeFiles/demo_main_menu.dir/all
+CMakeFiles/example_chain.dir/all: CMakeFiles/cad_core.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_chain.dir/build.make CMakeFiles/example_chain.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_chain.dir/build.make CMakeFiles/example_chain.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=7,8 "Built target example_chain"
+.PHONY : CMakeFiles/example_chain.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/demo_main_menu.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 17
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/demo_main_menu.dir/all
+CMakeFiles/example_chain.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 8
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/example_chain.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 0
-.PHONY : CMakeFiles/demo_main_menu.dir/rule
+.PHONY : CMakeFiles/example_chain.dir/rule
 
 # Convenience name for target.
-demo_main_menu: CMakeFiles/demo_main_menu.dir/rule
-.PHONY : demo_main_menu
+example_chain: CMakeFiles/example_chain.dir/rule
+.PHONY : example_chain
 
 # codegen rule for target.
-CMakeFiles/demo_main_menu.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_main_menu.dir/build.make CMakeFiles/demo_main_menu.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=1,2 "Finished codegen for target demo_main_menu"
-.PHONY : CMakeFiles/demo_main_menu.dir/codegen
+CMakeFiles/example_chain.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_chain.dir/build.make CMakeFiles/example_chain.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=7,8 "Finished codegen for target example_chain"
+.PHONY : CMakeFiles/example_chain.dir/codegen
 
 # clean rule for target.
-CMakeFiles/demo_main_menu.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_main_menu.dir/build.make CMakeFiles/demo_main_menu.dir/clean
-.PHONY : CMakeFiles/demo_main_menu.dir/clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/simple_gui.dir
-
-# All Build rule for target.
-CMakeFiles/simple_gui.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=20,21,22,23 "Built target simple_gui"
-.PHONY : CMakeFiles/simple_gui.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/simple_gui.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 4
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/simple_gui.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/user/Documents/driver-solution-cad/build/CMakeFiles 0
-.PHONY : CMakeFiles/simple_gui.dir/rule
-
-# Convenience name for target.
-simple_gui: CMakeFiles/simple_gui.dir/rule
-.PHONY : simple_gui
-
-# codegen rule for target.
-CMakeFiles/simple_gui.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/user/Documents/driver-solution-cad/build/CMakeFiles --progress-num=20,21,22,23 "Finished codegen for target simple_gui"
-.PHONY : CMakeFiles/simple_gui.dir/codegen
-
-# clean rule for target.
-CMakeFiles/simple_gui.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/clean
-.PHONY : CMakeFiles/simple_gui.dir/clean
+CMakeFiles/example_chain.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_chain.dir/build.make CMakeFiles/example_chain.dir/clean
+.PHONY : CMakeFiles/example_chain.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

@@ -2,70 +2,53 @@
 #define VALUE_H
 
 #include "Solution.h"
-#include <string>
 #include <variant>
-#include <memory>
+#include <string>
 
 class Value : public Solution {
 public:
+    using DataType = std::variant<int, double, std::string, bool>;
+    
     Value();
-    virtual ~Value() = default;
+    explicit Value(int v);
+    explicit Value(double v);
+    explicit Value(const std::string& v);
+    explicit Value(bool v);
     
-    // Value type management
-    enum class ValueType {
-        INTEGER,
-        DOUBLE,
-        STRING,
-        BOOLEAN,
-        POINTER,
-        UNDEFINED
-    };
+    // Getters
+    int asInt() const;
+    double asDouble() const;
+    std::string asString() const;
+    bool asBool() const;
     
-    ValueType getType() const { return type_; }
-    void setType(ValueType type) { type_ = type; }
+    // Setters
+    void set(int v);
+    void set(double v);
+    void set(const std::string& v);
+    void set(bool v);
     
-    // Value data access
-    void setInt(int value);
-    void setDouble(double value);
-    void setString(const std::string& value);
-    void setBool(bool value);
-    void setPointer(void* value);
+    // Type check
+    template<typename T>
+    bool is() const { return std::holds_alternative<T>(data_); }
     
-    int getInt() const;
-    double getDouble() const;
-    std::string getString() const;
-    bool getBool() const;
-    void* getPointer() const;
-    
-    // Value conversion
-    std::string toString() const;
-    bool toBool() const;
-    int toInt() const;
-    double toDouble() const;
-    
-    // Value validation
-    bool isValid() const;
-    void clear();
-    
-    // Value comparison
-    bool equals(const Value& other) const;
-    bool operator==(const Value& other) const;
-    bool operator!=(const Value& other) const;
-    
-    // Value operations
+    // Operators
     Value operator+(const Value& other) const;
     Value operator-(const Value& other) const;
     Value operator*(const Value& other) const;
     Value operator/(const Value& other) const;
+    bool operator==(const Value& other) const;
     
+    // Solution interface
+    void solve() override;
+    std::unique_ptr<Solution> duplicate() const override;
+    std::unique_ptr<Solution> copy() override;
+    std::unique_ptr<Solution> propagate() override;
+
 protected:
-    ValueType type_;
-    std::variant<int, double, std::string, bool, void*> data_;
-    
-    // Helper methods for type conversion
-    void convertTo(ValueType target_type);
-    bool canConvertTo(ValueType target_type) const;
+    void copyBaseTo(Solution* target) const override;
+
+private:
+    DataType data_;
 };
 
 #endif // VALUE_H
-

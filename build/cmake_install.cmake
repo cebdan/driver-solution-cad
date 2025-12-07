@@ -37,34 +37,6 @@ if(NOT DEFINED CMAKE_OBJDUMP)
   set(CMAKE_OBJDUMP "/usr/bin/objdump")
 endif()
 
-if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "/Users/user/Documents/driver-solution-cad/build/libdriver_solution_cad.a")
-  if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libdriver_solution_cad.a" AND
-     NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libdriver_solution_cad.a")
-    execute_process(COMMAND "/usr/bin/ranlib" "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib/libdriver_solution_cad.a")
-  endif()
-endif()
-
-if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE FILE FILES
-    "/Users/user/Documents/driver-solution-cad/include/ConstructionHistory.h"
-    "/Users/user/Documents/driver-solution-cad/include/Node.h"
-    "/Users/user/Documents/driver-solution-cad/include/Solution.h"
-    "/Users/user/Documents/driver-solution-cad/include/SolutionDocument.h"
-    "/Users/user/Documents/driver-solution-cad/include/Document2D.h"
-    "/Users/user/Documents/driver-solution-cad/include/StartWindow.h"
-    "/Users/user/Documents/driver-solution-cad/include/Value.h"
-    "/Users/user/Documents/driver-solution-cad/include/CS.h"
-    "/Users/user/Documents/driver-solution-cad/include/2D_point.h"
-    "/Users/user/Documents/driver-solution-cad/include/3D_point.h"
-    "/Users/user/Documents/driver-solution-cad/include/TerminalWindow.h"
-    "/Users/user/Documents/driver-solution-cad/include/XTD.h"
-    "/Users/user/Documents/driver-solution-cad/include/OpenGLRenderer.h"
-    "/Users/user/Documents/driver-solution-cad/include/DataExchange.h"
-    "/Users/user/Documents/driver-solution-cad/include/close_app.h"
-    )
-endif()
-
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)

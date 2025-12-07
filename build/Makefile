@@ -65,16 +65,6 @@ CMAKE_BINARY_DIR = /Users/user/Documents/driver-solution-cad/build
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target test
-test:
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running tests..."
-	/usr/local/bin/ctest $(ARGS)
-.PHONY : test
-
-# Special rule for the target test
-test/fast: test
-.PHONY : test/fast
-
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running CMake cache editor..."
@@ -94,51 +84,6 @@ rebuild_cache:
 # Special rule for the target rebuild_cache
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
-
-# Special rule for the target list_install_components
-list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Available install components are: \"Unspecified\""
-.PHONY : list_install_components
-
-# Special rule for the target list_install_components
-list_install_components/fast: list_install_components
-.PHONY : list_install_components/fast
-
-# Special rule for the target install
-install: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
-	/usr/local/bin/cmake -P cmake_install.cmake
-.PHONY : install
-
-# Special rule for the target install
-install/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
-	/usr/local/bin/cmake -P cmake_install.cmake
-.PHONY : install/fast
-
-# Special rule for the target install/local
-install/local: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
-	/usr/local/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
-.PHONY : install/local
-
-# Special rule for the target install/local
-install/local/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
-	/usr/local/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
-.PHONY : install/local/fast
-
-# Special rule for the target install/strip
-install/strip: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
-	/usr/local/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
-.PHONY : install/strip
-
-# Special rule for the target install/strip
-install/strip/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
-	/usr/local/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
-.PHONY : install/strip/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -172,183 +117,74 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named driver_solution_cad
+# Target rules for targets named cad_core
 
 # Build rule for target.
-driver_solution_cad: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 driver_solution_cad
-.PHONY : driver_solution_cad
+cad_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cad_core
+.PHONY : cad_core
 
 # fast build rule for target.
-driver_solution_cad/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/build
-.PHONY : driver_solution_cad/fast
+cad_core/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/build
+.PHONY : cad_core/fast
 
 #=============================================================================
-# Target rules for targets named demo_terminal
+# Target rules for targets named test_core
 
 # Build rule for target.
-demo_terminal: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 demo_terminal
-.PHONY : demo_terminal
+test_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_core
+.PHONY : test_core
 
 # fast build rule for target.
-demo_terminal/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_terminal.dir/build.make CMakeFiles/demo_terminal.dir/build
-.PHONY : demo_terminal/fast
+test_core/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_core.dir/build.make CMakeFiles/test_core.dir/build
+.PHONY : test_core/fast
 
 #=============================================================================
-# Target rules for targets named demo_main_menu
+# Target rules for targets named example_chain
 
 # Build rule for target.
-demo_main_menu: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 demo_main_menu
-.PHONY : demo_main_menu
+example_chain: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 example_chain
+.PHONY : example_chain
 
 # fast build rule for target.
-demo_main_menu/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_main_menu.dir/build.make CMakeFiles/demo_main_menu.dir/build
-.PHONY : demo_main_menu/fast
+example_chain/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_chain.dir/build.make CMakeFiles/example_chain.dir/build
+.PHONY : example_chain/fast
 
-#=============================================================================
-# Target rules for targets named simple_gui
-
-# Build rule for target.
-simple_gui: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 simple_gui
-.PHONY : simple_gui
-
-# fast build rule for target.
-simple_gui/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/build
-.PHONY : simple_gui/fast
-
-examples/demo_main_menu.o: examples/demo_main_menu.cpp.o
-.PHONY : examples/demo_main_menu.o
+examples/example_chain.o: examples/example_chain.cpp.o
+.PHONY : examples/example_chain.o
 
 # target to build an object file
-examples/demo_main_menu.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_main_menu.dir/build.make CMakeFiles/demo_main_menu.dir/examples/demo_main_menu.cpp.o
-.PHONY : examples/demo_main_menu.cpp.o
+examples/example_chain.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_chain.dir/build.make CMakeFiles/example_chain.dir/examples/example_chain.cpp.o
+.PHONY : examples/example_chain.cpp.o
 
-examples/demo_main_menu.i: examples/demo_main_menu.cpp.i
-.PHONY : examples/demo_main_menu.i
-
-# target to preprocess a source file
-examples/demo_main_menu.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_main_menu.dir/build.make CMakeFiles/demo_main_menu.dir/examples/demo_main_menu.cpp.i
-.PHONY : examples/demo_main_menu.cpp.i
-
-examples/demo_main_menu.s: examples/demo_main_menu.cpp.s
-.PHONY : examples/demo_main_menu.s
-
-# target to generate assembly for a file
-examples/demo_main_menu.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_main_menu.dir/build.make CMakeFiles/demo_main_menu.dir/examples/demo_main_menu.cpp.s
-.PHONY : examples/demo_main_menu.cpp.s
-
-examples/demo_terminal.o: examples/demo_terminal.cpp.o
-.PHONY : examples/demo_terminal.o
-
-# target to build an object file
-examples/demo_terminal.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_terminal.dir/build.make CMakeFiles/demo_terminal.dir/examples/demo_terminal.cpp.o
-.PHONY : examples/demo_terminal.cpp.o
-
-examples/demo_terminal.i: examples/demo_terminal.cpp.i
-.PHONY : examples/demo_terminal.i
+examples/example_chain.i: examples/example_chain.cpp.i
+.PHONY : examples/example_chain.i
 
 # target to preprocess a source file
-examples/demo_terminal.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_terminal.dir/build.make CMakeFiles/demo_terminal.dir/examples/demo_terminal.cpp.i
-.PHONY : examples/demo_terminal.cpp.i
+examples/example_chain.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_chain.dir/build.make CMakeFiles/example_chain.dir/examples/example_chain.cpp.i
+.PHONY : examples/example_chain.cpp.i
 
-examples/demo_terminal.s: examples/demo_terminal.cpp.s
-.PHONY : examples/demo_terminal.s
-
-# target to generate assembly for a file
-examples/demo_terminal.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/demo_terminal.dir/build.make CMakeFiles/demo_terminal.dir/examples/demo_terminal.cpp.s
-.PHONY : examples/demo_terminal.cpp.s
-
-examples/simple_gui_working.o: examples/simple_gui_working.cpp.o
-.PHONY : examples/simple_gui_working.o
-
-# target to build an object file
-examples/simple_gui_working.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/examples/simple_gui_working.cpp.o
-.PHONY : examples/simple_gui_working.cpp.o
-
-examples/simple_gui_working.i: examples/simple_gui_working.cpp.i
-.PHONY : examples/simple_gui_working.i
-
-# target to preprocess a source file
-examples/simple_gui_working.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/examples/simple_gui_working.cpp.i
-.PHONY : examples/simple_gui_working.cpp.i
-
-examples/simple_gui_working.s: examples/simple_gui_working.cpp.s
-.PHONY : examples/simple_gui_working.s
+examples/example_chain.s: examples/example_chain.cpp.s
+.PHONY : examples/example_chain.s
 
 # target to generate assembly for a file
-examples/simple_gui_working.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/examples/simple_gui_working.cpp.s
-.PHONY : examples/simple_gui_working.cpp.s
-
-src/2D_point.o: src/2D_point.cpp.o
-.PHONY : src/2D_point.o
-
-# target to build an object file
-src/2D_point.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/2D_point.cpp.o
-.PHONY : src/2D_point.cpp.o
-
-src/2D_point.i: src/2D_point.cpp.i
-.PHONY : src/2D_point.i
-
-# target to preprocess a source file
-src/2D_point.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/2D_point.cpp.i
-.PHONY : src/2D_point.cpp.i
-
-src/2D_point.s: src/2D_point.cpp.s
-.PHONY : src/2D_point.s
-
-# target to generate assembly for a file
-src/2D_point.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/2D_point.cpp.s
-.PHONY : src/2D_point.cpp.s
-
-src/3D_point.o: src/3D_point.cpp.o
-.PHONY : src/3D_point.o
-
-# target to build an object file
-src/3D_point.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/3D_point.cpp.o
-.PHONY : src/3D_point.cpp.o
-
-src/3D_point.i: src/3D_point.cpp.i
-.PHONY : src/3D_point.i
-
-# target to preprocess a source file
-src/3D_point.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/3D_point.cpp.i
-.PHONY : src/3D_point.cpp.i
-
-src/3D_point.s: src/3D_point.cpp.s
-.PHONY : src/3D_point.s
-
-# target to generate assembly for a file
-src/3D_point.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/3D_point.cpp.s
-.PHONY : src/3D_point.cpp.s
+examples/example_chain.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_chain.dir/build.make CMakeFiles/example_chain.dir/examples/example_chain.cpp.s
+.PHONY : examples/example_chain.cpp.s
 
 src/CS.o: src/CS.cpp.o
 .PHONY : src/CS.o
 
 # target to build an object file
 src/CS.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/CS.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/CS.cpp.o
 .PHONY : src/CS.cpp.o
 
 src/CS.i: src/CS.cpp.i
@@ -356,7 +192,7 @@ src/CS.i: src/CS.cpp.i
 
 # target to preprocess a source file
 src/CS.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/CS.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/CS.cpp.i
 .PHONY : src/CS.cpp.i
 
 src/CS.s: src/CS.cpp.s
@@ -364,135 +200,63 @@ src/CS.s: src/CS.cpp.s
 
 # target to generate assembly for a file
 src/CS.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/CS.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/CS.cpp.s
 .PHONY : src/CS.cpp.s
 
-src/ConstructionHistory.o: src/ConstructionHistory.cpp.o
-.PHONY : src/ConstructionHistory.o
+src/Line.o: src/Line.cpp.o
+.PHONY : src/Line.o
 
 # target to build an object file
-src/ConstructionHistory.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/ConstructionHistory.cpp.o
-.PHONY : src/ConstructionHistory.cpp.o
+src/Line.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Line.cpp.o
+.PHONY : src/Line.cpp.o
 
-src/ConstructionHistory.i: src/ConstructionHistory.cpp.i
-.PHONY : src/ConstructionHistory.i
+src/Line.i: src/Line.cpp.i
+.PHONY : src/Line.i
 
 # target to preprocess a source file
-src/ConstructionHistory.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/ConstructionHistory.cpp.i
-.PHONY : src/ConstructionHistory.cpp.i
+src/Line.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Line.cpp.i
+.PHONY : src/Line.cpp.i
 
-src/ConstructionHistory.s: src/ConstructionHistory.cpp.s
-.PHONY : src/ConstructionHistory.s
+src/Line.s: src/Line.cpp.s
+.PHONY : src/Line.s
 
 # target to generate assembly for a file
-src/ConstructionHistory.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/ConstructionHistory.cpp.s
-.PHONY : src/ConstructionHistory.cpp.s
+src/Line.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Line.cpp.s
+.PHONY : src/Line.cpp.s
 
-src/DataExchange.o: src/DataExchange.cpp.o
-.PHONY : src/DataExchange.o
+src/Point.o: src/Point.cpp.o
+.PHONY : src/Point.o
 
 # target to build an object file
-src/DataExchange.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/DataExchange.cpp.o
-.PHONY : src/DataExchange.cpp.o
+src/Point.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Point.cpp.o
+.PHONY : src/Point.cpp.o
 
-src/DataExchange.i: src/DataExchange.cpp.i
-.PHONY : src/DataExchange.i
-
-# target to preprocess a source file
-src/DataExchange.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/DataExchange.cpp.i
-.PHONY : src/DataExchange.cpp.i
-
-src/DataExchange.s: src/DataExchange.cpp.s
-.PHONY : src/DataExchange.s
-
-# target to generate assembly for a file
-src/DataExchange.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/DataExchange.cpp.s
-.PHONY : src/DataExchange.cpp.s
-
-src/Document2D.o: src/Document2D.cpp.o
-.PHONY : src/Document2D.o
-
-# target to build an object file
-src/Document2D.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Document2D.cpp.o
-.PHONY : src/Document2D.cpp.o
-
-src/Document2D.i: src/Document2D.cpp.i
-.PHONY : src/Document2D.i
+src/Point.i: src/Point.cpp.i
+.PHONY : src/Point.i
 
 # target to preprocess a source file
-src/Document2D.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Document2D.cpp.i
-.PHONY : src/Document2D.cpp.i
+src/Point.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Point.cpp.i
+.PHONY : src/Point.cpp.i
 
-src/Document2D.s: src/Document2D.cpp.s
-.PHONY : src/Document2D.s
-
-# target to generate assembly for a file
-src/Document2D.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Document2D.cpp.s
-.PHONY : src/Document2D.cpp.s
-
-src/Node.o: src/Node.cpp.o
-.PHONY : src/Node.o
-
-# target to build an object file
-src/Node.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Node.cpp.o
-.PHONY : src/Node.cpp.o
-
-src/Node.i: src/Node.cpp.i
-.PHONY : src/Node.i
-
-# target to preprocess a source file
-src/Node.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Node.cpp.i
-.PHONY : src/Node.cpp.i
-
-src/Node.s: src/Node.cpp.s
-.PHONY : src/Node.s
+src/Point.s: src/Point.cpp.s
+.PHONY : src/Point.s
 
 # target to generate assembly for a file
-src/Node.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Node.cpp.s
-.PHONY : src/Node.cpp.s
-
-src/OpenGLRenderer.o: src/OpenGLRenderer.cpp.o
-.PHONY : src/OpenGLRenderer.o
-
-# target to build an object file
-src/OpenGLRenderer.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/OpenGLRenderer.cpp.o
-.PHONY : src/OpenGLRenderer.cpp.o
-
-src/OpenGLRenderer.i: src/OpenGLRenderer.cpp.i
-.PHONY : src/OpenGLRenderer.i
-
-# target to preprocess a source file
-src/OpenGLRenderer.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/OpenGLRenderer.cpp.i
-.PHONY : src/OpenGLRenderer.cpp.i
-
-src/OpenGLRenderer.s: src/OpenGLRenderer.cpp.s
-.PHONY : src/OpenGLRenderer.s
-
-# target to generate assembly for a file
-src/OpenGLRenderer.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/OpenGLRenderer.cpp.s
-.PHONY : src/OpenGLRenderer.cpp.s
+src/Point.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Point.cpp.s
+.PHONY : src/Point.cpp.s
 
 src/Solution.o: src/Solution.cpp.o
 .PHONY : src/Solution.o
 
 # target to build an object file
 src/Solution.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Solution.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Solution.cpp.o
 .PHONY : src/Solution.cpp.o
 
 src/Solution.i: src/Solution.cpp.i
@@ -500,7 +264,7 @@ src/Solution.i: src/Solution.cpp.i
 
 # target to preprocess a source file
 src/Solution.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Solution.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Solution.cpp.i
 .PHONY : src/Solution.cpp.i
 
 src/Solution.s: src/Solution.cpp.s
@@ -508,63 +272,15 @@ src/Solution.s: src/Solution.cpp.s
 
 # target to generate assembly for a file
 src/Solution.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Solution.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Solution.cpp.s
 .PHONY : src/Solution.cpp.s
-
-src/SolutionDocument.o: src/SolutionDocument.cpp.o
-.PHONY : src/SolutionDocument.o
-
-# target to build an object file
-src/SolutionDocument.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/SolutionDocument.cpp.o
-.PHONY : src/SolutionDocument.cpp.o
-
-src/SolutionDocument.i: src/SolutionDocument.cpp.i
-.PHONY : src/SolutionDocument.i
-
-# target to preprocess a source file
-src/SolutionDocument.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/SolutionDocument.cpp.i
-.PHONY : src/SolutionDocument.cpp.i
-
-src/SolutionDocument.s: src/SolutionDocument.cpp.s
-.PHONY : src/SolutionDocument.s
-
-# target to generate assembly for a file
-src/SolutionDocument.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/SolutionDocument.cpp.s
-.PHONY : src/SolutionDocument.cpp.s
-
-src/TerminalWindow.o: src/TerminalWindow.cpp.o
-.PHONY : src/TerminalWindow.o
-
-# target to build an object file
-src/TerminalWindow.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/TerminalWindow.cpp.o
-.PHONY : src/TerminalWindow.cpp.o
-
-src/TerminalWindow.i: src/TerminalWindow.cpp.i
-.PHONY : src/TerminalWindow.i
-
-# target to preprocess a source file
-src/TerminalWindow.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/TerminalWindow.cpp.i
-.PHONY : src/TerminalWindow.cpp.i
-
-src/TerminalWindow.s: src/TerminalWindow.cpp.s
-.PHONY : src/TerminalWindow.s
-
-# target to generate assembly for a file
-src/TerminalWindow.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/TerminalWindow.cpp.s
-.PHONY : src/TerminalWindow.cpp.s
 
 src/Value.o: src/Value.cpp.o
 .PHONY : src/Value.o
 
 # target to build an object file
 src/Value.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Value.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Value.cpp.o
 .PHONY : src/Value.cpp.o
 
 src/Value.i: src/Value.cpp.i
@@ -572,7 +288,7 @@ src/Value.i: src/Value.cpp.i
 
 # target to preprocess a source file
 src/Value.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Value.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Value.cpp.i
 .PHONY : src/Value.cpp.i
 
 src/Value.s: src/Value.cpp.s
@@ -580,83 +296,32 @@ src/Value.s: src/Value.cpp.s
 
 # target to generate assembly for a file
 src/Value.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/Value.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cad_core.dir/build.make CMakeFiles/cad_core.dir/src/Value.cpp.s
 .PHONY : src/Value.cpp.s
 
-src/XTD.o: src/XTD.cpp.o
-.PHONY : src/XTD.o
+tests/test_core.o: tests/test_core.cpp.o
+.PHONY : tests/test_core.o
 
 # target to build an object file
-src/XTD.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/XTD.cpp.o
-.PHONY : src/XTD.cpp.o
+tests/test_core.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_core.dir/build.make CMakeFiles/test_core.dir/tests/test_core.cpp.o
+.PHONY : tests/test_core.cpp.o
 
-src/XTD.i: src/XTD.cpp.i
-.PHONY : src/XTD.i
-
-# target to preprocess a source file
-src/XTD.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/XTD.cpp.i
-.PHONY : src/XTD.cpp.i
-
-src/XTD.s: src/XTD.cpp.s
-.PHONY : src/XTD.s
-
-# target to generate assembly for a file
-src/XTD.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/XTD.cpp.s
-.PHONY : src/XTD.cpp.s
-
-src/close_app.o: src/close_app.cpp.o
-.PHONY : src/close_app.o
-
-# target to build an object file
-src/close_app.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/close_app.cpp.o
-.PHONY : src/close_app.cpp.o
-
-src/close_app.i: src/close_app.cpp.i
-.PHONY : src/close_app.i
+tests/test_core.i: tests/test_core.cpp.i
+.PHONY : tests/test_core.i
 
 # target to preprocess a source file
-src/close_app.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/close_app.cpp.i
-.PHONY : src/close_app.cpp.i
+tests/test_core.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_core.dir/build.make CMakeFiles/test_core.dir/tests/test_core.cpp.i
+.PHONY : tests/test_core.cpp.i
 
-src/close_app.s: src/close_app.cpp.s
-.PHONY : src/close_app.s
-
-# target to generate assembly for a file
-src/close_app.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/driver_solution_cad.dir/build.make CMakeFiles/driver_solution_cad.dir/src/close_app.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/close_app.cpp.s
-.PHONY : src/close_app.cpp.s
-
-src/macos_window_utils.o: src/macos_window_utils.mm.o
-.PHONY : src/macos_window_utils.o
-
-# target to build an object file
-src/macos_window_utils.mm.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.o
-.PHONY : src/macos_window_utils.mm.o
-
-src/macos_window_utils.i: src/macos_window_utils.mm.i
-.PHONY : src/macos_window_utils.i
-
-# target to preprocess a source file
-src/macos_window_utils.mm.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.i
-.PHONY : src/macos_window_utils.mm.i
-
-src/macos_window_utils.s: src/macos_window_utils.mm.s
-.PHONY : src/macos_window_utils.s
+tests/test_core.s: tests/test_core.cpp.s
+.PHONY : tests/test_core.s
 
 # target to generate assembly for a file
-src/macos_window_utils.mm.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_gui.dir/build.make CMakeFiles/simple_gui.dir/src/macos_window_utils.mm.s
-.PHONY : src/macos_window_utils.mm.s
+tests/test_core.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_core.dir/build.make CMakeFiles/test_core.dir/tests/test_core.cpp.s
+.PHONY : tests/test_core.cpp.s
 
 # Help Target
 help:
@@ -665,70 +330,31 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
-	@echo "... install"
-	@echo "... install/local"
-	@echo "... install/strip"
-	@echo "... list_install_components"
 	@echo "... rebuild_cache"
-	@echo "... test"
-	@echo "... demo_main_menu"
-	@echo "... demo_terminal"
-	@echo "... driver_solution_cad"
-	@echo "... simple_gui"
-	@echo "... examples/demo_main_menu.o"
-	@echo "... examples/demo_main_menu.i"
-	@echo "... examples/demo_main_menu.s"
-	@echo "... examples/demo_terminal.o"
-	@echo "... examples/demo_terminal.i"
-	@echo "... examples/demo_terminal.s"
-	@echo "... examples/simple_gui_working.o"
-	@echo "... examples/simple_gui_working.i"
-	@echo "... examples/simple_gui_working.s"
-	@echo "... src/2D_point.o"
-	@echo "... src/2D_point.i"
-	@echo "... src/2D_point.s"
-	@echo "... src/3D_point.o"
-	@echo "... src/3D_point.i"
-	@echo "... src/3D_point.s"
+	@echo "... cad_core"
+	@echo "... example_chain"
+	@echo "... test_core"
+	@echo "... examples/example_chain.o"
+	@echo "... examples/example_chain.i"
+	@echo "... examples/example_chain.s"
 	@echo "... src/CS.o"
 	@echo "... src/CS.i"
 	@echo "... src/CS.s"
-	@echo "... src/ConstructionHistory.o"
-	@echo "... src/ConstructionHistory.i"
-	@echo "... src/ConstructionHistory.s"
-	@echo "... src/DataExchange.o"
-	@echo "... src/DataExchange.i"
-	@echo "... src/DataExchange.s"
-	@echo "... src/Document2D.o"
-	@echo "... src/Document2D.i"
-	@echo "... src/Document2D.s"
-	@echo "... src/Node.o"
-	@echo "... src/Node.i"
-	@echo "... src/Node.s"
-	@echo "... src/OpenGLRenderer.o"
-	@echo "... src/OpenGLRenderer.i"
-	@echo "... src/OpenGLRenderer.s"
+	@echo "... src/Line.o"
+	@echo "... src/Line.i"
+	@echo "... src/Line.s"
+	@echo "... src/Point.o"
+	@echo "... src/Point.i"
+	@echo "... src/Point.s"
 	@echo "... src/Solution.o"
 	@echo "... src/Solution.i"
 	@echo "... src/Solution.s"
-	@echo "... src/SolutionDocument.o"
-	@echo "... src/SolutionDocument.i"
-	@echo "... src/SolutionDocument.s"
-	@echo "... src/TerminalWindow.o"
-	@echo "... src/TerminalWindow.i"
-	@echo "... src/TerminalWindow.s"
 	@echo "... src/Value.o"
 	@echo "... src/Value.i"
 	@echo "... src/Value.s"
-	@echo "... src/XTD.o"
-	@echo "... src/XTD.i"
-	@echo "... src/XTD.s"
-	@echo "... src/close_app.o"
-	@echo "... src/close_app.i"
-	@echo "... src/close_app.s"
-	@echo "... src/macos_window_utils.o"
-	@echo "... src/macos_window_utils.i"
-	@echo "... src/macos_window_utils.s"
+	@echo "... tests/test_core.o"
+	@echo "... tests/test_core.i"
+	@echo "... tests/test_core.s"
 .PHONY : help
 
 

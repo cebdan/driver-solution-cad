@@ -1,92 +1,110 @@
 #ifndef SOLUTION_H
 #define SOLUTION_H
 
-#include "ConstructionHistory.h"
-#include "Node.h"
-#include "XTD.h"
-#include "DataExchange.h"
-#include "OpenGLRenderer.h"
-#include "TerminalWindow.h"
+#include <cstdint>
+#include <string>
 #include <vector>
 #include <memory>
-#include <string>
+#include <functional>
+#include <atomic>
 
-class Solution : public DataExchangeInterface {
+// Link types between solutions
+enum class LinkType {
+    None,       // Independent copy (duplicate)
+    Partial,    // Base params sync, additions independent (copy)
+    Full        // Everything syncs (propagate)
+};
+
+// Sync state
+enum class SyncState {
+    Active,     // Synchronization enabled
+    Excluded    // Temporarily disabled
+};
+
+class Solution {
 public:
     Solution();
-    virtual ~Solution();
-    
-    // Core microkernel methods
-    virtual void solve() = 0;
-    virtual void new_solution() = 0;
-    virtual void delete_solution() = 0;
-    virtual void copy() = 0;
-    virtual void duplication() = 0;
-    virtual void propagation() = 0;
-    virtual void similar_make() = 0;
-    
-    // Construction history management
-    ConstructionHistory* getConstructionHistory() { return &construction_history_; }
-    void addConstructionStep(const std::string& operation, void* data = nullptr);
-    void undoConstruction();
-    void redoConstruction();
-    
-    // Node system for scripts
-    void addNode(std::unique_ptr<Node> node);
-    Node* getNode(const std::string& name) const;
-    void removeNode(const std::string& name);
-    std::vector<Node*> getAllNodes() const;
-    void executeNode(const std::string& name);
-    void executeAllNodes();
-    
-    // XTD GUI system
-    XTD* getXTD() { return xtd_.get(); }
-    void initializeXTD();
-    void updateXTD();
-    void renderXTD();
-    XTDWindow* createXTDWindow(const std::string& title, int width, int height);
-    
-    // Terminal window
-    TerminalWindow* getTerminal() { return terminal_.get(); }
-    TerminalWindow* createTerminal(const std::string& title = "Terminal", int width = 800, int height = 600);
-    void showTerminal();
-    void hideTerminal();
-    
-    // OpenGL rendering
-    OpenGLRenderer* getRenderer() { return renderer_.get(); }
-    void initializeRenderer();
-    void render();
-    
-    // Data exchange interface implementation
-    virtual bool canReceiveData(const std::string& data_type) const override;
-    virtual bool canSendData(const std::string& data_type) const override;
-    virtual void* receiveData(void* data, const std::string& data_type) override;
-    virtual void* sendData(const std::string& data_type) override;
-    
-    // Solution identification
+    explicit Solution(const std::string& name);
+    virtual ~Solution() = default;
+
+    // Identity
+    uint64_t id() const { return id_; }
+    const std::string& name() const { return name_; }
     void setName(const std::string& name) { name_ = name; }
-    std::string getName() const { return name_; }
+
+    // Core operation - must be implemented by derived classes
+    virtual void solve() = 0;
+
+    // Linking operations
+    virtual std::unique_ptr<Solution> duplicate() const = 0;  // Independent copy
+    virtual std::unique_ptr<Solution> copy() = 0;             // Partial link
+    virtual std::unique_ptr<Solution> propagate() = 0;        // Full link
     
-    // Data exchange with other solutions
-    bool canExchangeDataWith(Solution* other_solution, const std::string& data_type);
-    void* exchangeDataWith(Solution* other_solution, const std::string& data_type, void* data);
+    // Link management
+    void exclude();                    // Pause sync
+    void restore();                    // Resume sync
+    void makeIndependent();            // Break link permanently
+    LinkType linkType() const { return link_type_; }
+    SyncState syncState() const { return sync_state_; }
+
+    // Tool generation
+    virtual std::unique_ptr<Solution> makeSimilar() const;
+
+    // Graph connections (inputs/outputs)
+    void addInput(Solution* input);
+    void removeInput(Solution* input);
+    const std::vector<Solution*>& inputs() const { return inputs_; }
     
+    void addOutput(Solution* output);
+    void removeOutput(Solution* output);
+    const std::vector<Solution*>& outputs() const { return outputs_; }
+
+    // Parent-child (linking hierarchy)
+    Solution* parent() const { return parent_; }
+    const std::vector<Solution*>& children() const { return children_; }
+
+    // Change propagation
+    void markDirty();
+    bool isDirty() const { return dirty_; }
+    void update();  // Recalculate if dirty
+
+    // Notifications
+    using ChangeCallback = std::function<void(Solution*)>;
+    void onChanged(ChangeCallback callback);
+
 protected:
-    // Override these methods to define data processing capabilities
-    virtual bool canProcessDataType(const std::string& data_type) const;
-    virtual void* processIncomingData(void* data, const std::string& data_type);
-    virtual void* prepareOutgoingData(const std::string& data_type);
+    // For derived classes to set up parent-child relationship
+    void setParent(Solution* parent);
+    void addChild(Solution* child);
+    void removeChild(Solution* child);
     
+    // Notify all outputs about change
+    void notifyOutputs();
+    
+    // Copy base parameters to target
+    virtual void copyBaseTo(Solution* target) const;
+    
+    // Link type - accessible to derived classes
+    LinkType link_type_ = LinkType::None;
+
 private:
-    std::string name_;
-    ConstructionHistory construction_history_;
-    std::vector<std::unique_ptr<Node>> nodes_;
-    std::unique_ptr<XTD> xtd_;
-    std::unique_ptr<OpenGLRenderer> renderer_;
-    std::unique_ptr<TerminalWindow> terminal_;
+    static std::atomic<uint64_t> next_id_;
     
-    std::string processTerminalCommand(const std::string& command);
+    uint64_t id_;
+    std::string name_;
+    
+    // Graph
+    std::vector<Solution*> inputs_;
+    std::vector<Solution*> outputs_;
+    
+    // Linking
+    Solution* parent_ = nullptr;
+    std::vector<Solution*> children_;
+    SyncState sync_state_ = SyncState::Active;
+    
+    // State
+    bool dirty_ = true;
+    std::vector<ChangeCallback> callbacks_;
 };
 
 #endif // SOLUTION_H
-
